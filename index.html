@@ -487,6 +487,7 @@ const COLS = [
 const SCEN_STATUSES = [
   { key:'idea',    name:'Ідея' },
   { key:'written', name:'Написано' },
+  { key:'shoot',   name:'Знімаємо' },
   { key:'filmed',  name:'Знято' },
   { key:'posted',  name:'Опубліковано' },
 ];
@@ -506,7 +507,7 @@ let charts = {};
 
 /* ---------- синхронізація: Firestore (хмара) або localStorage (демо) ---------- */
 let db = null, pendingRender = false;
-const SECTIONS = ['tasks','scenarios','calendar','stats','team','ai'];
+const SECTIONS = ['tasks','scenarios','calendar','stats','team','ai','proposals'];
 const lastSynced = {};
 
 function scheduleRender(){
@@ -567,7 +568,7 @@ function save(...sections){
 function load(){
   if (CLOUD){
     state = { user: storage.get('smm_user') || null,
-              tasks:[], scenarios:[], calendar:{}, stats:[], team:{}, ai:{} };
+              tasks:[], scenarios:[], calendar:{}, stats:[], team:{}, ai:{}, proposals:{} };
     initCloud();
   } else {
     const raw = storage.get('smm_demo_v1');
@@ -575,6 +576,7 @@ function load(){
     if (!state) state = seed();
     if (!state.team) state.team = Object.fromEntries(DEMO_TEAM.map(u=>[u.id,{first:u.first,last:u.last,handle:u.handle,photo:''}]));
     if (!state.ai) state.ai = {};
+    if (!state.proposals) state.proposals = {};
     save();
   }
 }
@@ -623,8 +625,16 @@ function seed(){
   }
   return { user:null, tasks, scenarios, calendar, stats,
     team: Object.fromEntries(DEMO_TEAM.map(u=>[u.id,{first:u.first,last:u.last,handle:u.handle,photo:''}])),
-    ai: {} };
+    ai: {}, proposals: {} };
 }
+
+/* ---------- демо-пропозиції сценаріїв (без хмари) ---------- */
+const DEMO_PROPOSALS = [
+  { id:'prop-demo-1', date: todayIso(), title:'Огляд BYD Tang L',
+    hook:'«Семимісний китаєць, який змусив німців нервувати»',
+    textTt:'Серія коротких лайв-відео:\n1) Екстер’єр + 3 цифри — 10–15 сек\n2) Салон і третій ряд — 10–15 сек\n3) Розгін POV — 10–15 сек\n4) Ціна + тест-драйв — 10–15 сек',
+    textIg:'Reels з ведучим 60 сек: зустріч біля авто, цифри титрами, прохід салоном, розгін, CTA тест-драйв.' },
+];
 
 /* ---------- демо-креативи для вкладки ШІ (без хмари) ---------- */
 const DEMO_CREATIVES = [
@@ -757,12 +767,17 @@ function renderTab(){
 
 /* ---------- ШІ-КРЕАТИВИ ---------- */
 let creativesIndex = null; // null = ще не завантажували
+let proposalsIndex = null;
 async function loadCreativesIndex(){
-  if (!CLOUD){ creativesIndex = DEMO_CREATIVES; return; }
+  if (!CLOUD){ creativesIndex = DEMO_CREATIVES; proposalsIndex = DEMO_PROPOSALS; return; }
   try{
     const r = await fetch('creatives/index.json?ts=' + Date.now(), {cache:'no-store'});
     creativesIndex = r.ok ? ((await r.json()).creatives || []) : [];
   }catch(e){ creativesIndex = []; }
+  try{
+    const p = await fetch('data/proposals.json?ts=' + Date.now(), {cache:'no-store'});
+    proposalsIndex = p.ok ? ((await p.json()).proposals || []) : [];
+  }catch(e){ proposalsIndex = []; }
 }
 function aiFb(id){
   state.ai = state.ai || {};
@@ -817,16 +832,55 @@ function renderAI(c){
       ${isAdmin() && !fixing && !approved ? `<button class="fix-btn" data-fix="${cr.id}">⚡ Виправити зараз</button>` : ''}
     </div>`;
   }).join('');
+  // ---- сценарії дня (пропозиції від ШІ) ----
+  const props = (proposalsIndex || []).slice().sort((a,b)=>a.id<b.id?1:-1);
+  const propCards = props.map(p=>{
+    const d = state.proposals && state.proposals[p.id];
+    const decided = d && d.decision;
+    const btns = decided
+      ? (decided==='accept'
+          ? `<span class="scen-status posted">✅ Прийнято — вже у «Сценаріях» зі статусом «Знімаємо»</span>`
+          : `<span class="scen-status filmed">🔄 Чекаємо заміну від ШІ</span>`)
+      : `<div class="note-row" style="margin-top:12px">
+           <button class="chip" data-prop-accept="${esc(p.id)}" style="flex:1;background:var(--gold-grad);color:var(--on-gold);border-color:transparent;font-weight:800">✅ Приймаємо</button>
+           <button class="chip" data-prop-replace="${esc(p.id)}" style="flex:1">🔄 Заміна</button>
+         </div>`;
+    return `<div class="card">
+      <div class="s-top"><div class="s-title">🎬 ${esc(p.title)}</div></div>
+      ${p.hook?`<div class="scen-hook"><b>Хук (спільний)</b>${esc(p.hook)}</div>`:''}
+      <div class="t-desc" style="margin-top:8px;-webkit-line-clamp:4"><b>TikTok:</b> ${esc(p.textTt||'')}</div>
+      <div class="t-desc" style="margin-top:6px;-webkit-line-clamp:3"><b>Instagram:</b> ${esc(p.textIg||'')}</div>
+      <div style="margin-top:10px">${btns}</div>
+    </div>`;
+  }).join('');
   c.innerHTML = `<div class="content">
     <div class="card" style="background:var(--gold-soft);border-color:rgba(240,180,41,.3)">
       <div style="font-size:13px;line-height:1.55;color:var(--text-secondary)">
-        <b style="color:var(--text-primary)">✨ Як це працює:</b> щодня о 12:00 ШІ викладає сюди 5–7 креативів.
+        <b style="color:var(--text-primary)">✨ Як це працює:</b> щодня о 12:00 ШІ викладає сюди 5–7 креативів і теми сценаріїв.
         Лайк від усіх ${teamSize()} — креатив затверджений, і ШІ надішле фінальний файл у Telegram.
-        Написали нотатку і натиснули «⚡ Виправити зараз» — виправлена версія прилетить протягом години.
+        Нотатка + «⚡ Виправити зараз» — виправлена версія протягом години.
+        Тема сценарію: «✅ Приймаємо» — пара TikTok+Instagram сама впаде у «Сценарії» в статус «Знімаємо»; «🔄 Заміна» — ШІ запропонує іншу.
       </div>
     </div>
+    ${propCards ? `<div class="section-title">🎬 Сценарії дня — прийняти чи замінити?</div>${propCards}` : ''}
     ${cards || `<div class="empty"><span class="emoji">🕛</span>Креативів поки немає.<br>Перша партія з'явиться о 12:00.</div>`}
   </div>`;
+  $$('[data-prop-accept]', c).forEach(b=>b.onclick = ()=>{
+    const p = (proposalsIndex||[]).find(x=>x.id===b.dataset.propAccept);
+    if (!p) return;
+    state.scenarios.push(
+      { id:uid(), platform:'tiktok', status:'shoot', title:`${p.title} · серія TikTok`, hook:p.hook||'', text:p.textTt||'' },
+      { id:uid(), platform:'insta',  status:'shoot', title:`${p.title} · Reels з ведучим`, hook:p.hook||'', text:p.textIg||'' }
+    );
+    state.proposals = state.proposals || {};
+    state.proposals[p.id] = { decision:'accept', by:state.user, at:Date.now() };
+    save('scenarios','proposals'); render();
+  });
+  $$('[data-prop-replace]', c).forEach(b=>b.onclick = ()=>{
+    state.proposals = state.proposals || {};
+    state.proposals[b.dataset.propReplace] = { decision:'replace', by:state.user, at:Date.now() };
+    save('proposals'); render();
+  });
   $$('[data-like]', c).forEach(b=>b.onclick = ()=>{
     const fb = aiFb(b.dataset.like);
     if (fb.likes[state.user]) delete fb.likes[state.user];
