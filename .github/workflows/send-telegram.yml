@@ -1,0 +1,62 @@
+# Бот-розсилка: надсилає в Telegram усе, що лежить у data/outbox.json
+# Запускається сам, щойно ШІ (Claude) додає туди повідомлення чи файли.
+name: telegram-send
+
+on:
+  push:
+    paths:
+      - 'data/outbox.json'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Надіслати все з outbox
+        env:
+          BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
+        run: |
+          set -e
+          if [ ! -f data/outbox.json ]; then echo "нема outbox"; exit 0; fi
+          COUNT=$(jq length data/outbox.json)
+          echo "У черзі: $COUNT"
+          [ "$COUNT" = "0" ] && exit 0
+          for i in $(seq 0 $((COUNT-1))); do
+            TYPE=$(jq -r ".[$i].type" data/outbox.json)
+            TEXT=$(jq -r ".[$i].text // empty" data/outbox.json)
+            FILE=$(jq -r ".[$i].file // empty" data/outbox.json)
+            CAPTION=$(jq -r ".[$i].caption // empty" data/outbox.json)
+            case "$TYPE" in
+              message)
+                curl -sf -X POST "https://api.telegram.org/bot$BOT_TOKEN/sendMessage" \
+                  --data-urlencode chat_id="$CHAT_ID" \
+                  --data-urlencode text="$TEXT" \
+                  --data-urlencode parse_mode=HTML ;;
+              photo)
+                curl -sf -F chat_id="$CHAT_ID" -F photo=@"$FILE" \
+                  -F caption="$CAPTION" \
+                  "https://api.telegram.org/bot$BOT_TOKEN/sendPhoto" ;;
+              document)
+                # document = повна якість без стиснення
+                curl -sf -F chat_id="$CHAT_ID" -F document=@"$FILE" \
+                  -F caption="$CAPTION" \
+                  "https://api.telegram.org/bot$BOT_TOKEN/sendDocument" ;;
+              *) echo "невідомий тип: $TYPE" ;;
+            esac
+            echo
+          done
+
+      - name: Очистити outbox
+        run: |
+          echo "[]" > data/outbox.json
+          git config user.name "smm-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add data/outbox.json
+          git commit -m "outbox: надіслано ✓" || exit 0
+          git push
