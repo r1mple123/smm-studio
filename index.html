@@ -786,7 +786,8 @@ function renderAI(c){
     const approved = likes.length >= total;
     const hasNotes = (fb.notes||[]).length > 0;
     const myLike = state.user && fb.likes && fb.likes[state.user];
-    const fixing = fb.fix && !fb.fix.done;
+    // якщо ШІ вже випустив виправлену версію (rev пізніший за запит) — запит вважаємо виконаним
+    const fixing = fb.fix && !fb.fix.done && !(cr.rev && cr.rev > fb.fix.at);
     const status = fixing
       ? `<span class="scen-status filmed">⚡ У роботі — виправлення вже генерується</span>`
       : approved
