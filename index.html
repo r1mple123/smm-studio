@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ELECTRI4KA · SMM Studio</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    color-scheme: dark;
+    --bg-page:#08080a;
+    --surface-1:#1b1b1e;
+    --surface-2:#121214;
+    --surface-3:#232327;
+    --text-primary:#f6f4ee;
+    --text-secondary:#bab7ad;
+    --text-muted:#8a877e;
+    --grid:#2c2c2a;
+    --baseline:#45443f;
+    --border:rgba(255,255,255,0.09);
+    --gold:#f0b429;
+    --gold-2:#e8a213;
+    --gold-grad:linear-gradient(135deg,#f9d778 0%,#f0b429 45%,#d98e0b 100%);
+    --gold-soft:rgba(240,180,41,.14);
+    --gold-glow:0 8px 28px rgba(240,180,41,.35);
+    --accent:var(--gold);
+    --on-gold:#171204;
+    --series-tiktok:#3987e5;
+    --series-insta:#c98500;
+    --good:#0ca30c;
+    --good-text:#3ddc7d;
+    --critical:#e66767;
+    --warning:#fab219;
+    --col-plan:#9b93b8;
+    --col-doing:#4da3ff;
+    --col-review:#f0b429;
+    --col-done:#2fbf71;
+    --sheet-shadow:0 -10px 44px rgba(0,0,0,.6);
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
+    background:radial-gradient(1100px 700px at 50% -12%, rgba(240,180,41,.16) 0%, transparent 55%),
+               radial-gradient(900px 600px at 85% 110%, rgba(240,180,41,.08) 0%, transparent 60%),
+               var(--bg-page);
+    display:flex;align-items:center;justify-content:center;
+    min-height:100vh;padding:24px 12px;
+    color:var(--text-primary);
+  }
+  /* ============ PHONE FRAME ============ */
+  .phone{
+    width:393px;height:832px;max-height:calc(100vh - 24px);
+    background:#0b0b0c;border-radius:54px;padding:10px;
+    box-shadow:0 30px 90px rgba(0,0,0,.75), 0 0 60px rgba(240,180,41,.12), inset 0 0 0 2px #b98a1f;
+    position:relative;flex:none;
+  }
+  .phone-screen{
+    width:100%;height:100%;background:var(--surface-2);
+    border-radius:44px;overflow:clip;position:relative;
+    display:flex;flex-direction:column;
+  }
+  .notch{
+    position:absolute;top:10px;left:50%;transform:translateX(-50%);
+    width:118px;height:32px;background:#0b0b0c;border-radius:20px;z-index:60;
+  }
+  .statusbar{
+    height:52px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;
+    padding:0 30px 4px;font-size:14px;font-weight:600;color:var(--text-primary);
+    background:transparent;position:relative;z-index:50;
+  }
+  .statusbar .sb-icons{display:flex;gap:5px;align-items:center}
+  @media (max-width:430px){
+    body{padding:0}
+    .phone{width:100%;height:100vh;max-height:none;border-radius:0;padding:0;box-shadow:none}
+    .phone-screen{border-radius:0}
+    .notch{display:none}
+  }
+  /* ============ APP LAYOUT ============ */
+  .app{flex:1;display:flex;flex-direction:column;min-height:0;position:relative}
+  .screen{flex:1;display:none;flex-direction:column;min-height:0}
+  .screen.active{display:flex}
+  .content{flex:1;overflow-y:auto;overscroll-behavior:contain;padding:0 16px 96px;scrollbar-width:none}
+  .content::-webkit-scrollbar{display:none}
+  .app-header{
+    flex:none;padding:6px 16px 10px;display:flex;align-items:center;gap:10px;
+  }
+  .app-header h1{font-size:22px;font-weight:800;letter-spacing:-.02em;flex:1}
+  .avatar{
+    width:36px;height:36px;border-radius:50%;background:var(--gold-grad);color:var(--on-gold);
+    display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex:none;
+    border:none;cursor:pointer;
+  }
+  /* ============ TAB BAR ============ */
+  .tabbar{
+    position:absolute;left:0;right:0;bottom:0;z-index:40;
+    display:flex;justify-content:space-around;align-items:stretch;
+    padding:8px 8px calc(14px + env(safe-area-inset-bottom));
+    background:rgba(14,14,16,.92);backdrop-filter:blur(14px);
+    border-top:1px solid var(--border);
+  }
+  .tab-btn{
+    flex:1;border:none;background:none;cursor:pointer;
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    font-family:inherit;font-size:10.5px;font-weight:600;color:var(--text-muted);padding:4px 0;
+  }
+  .tab-btn svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+  .tab-btn.active{color:var(--accent)}
+  /* ============ LOGIN ============ */
+  #screen-login{background:radial-gradient(500px 380px at 50% 6%, rgba(240,180,41,.22) 0%, transparent 65%), var(--surface-2)}
+  .login-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 28px 40px;overflow-y:auto}
+  .login-logo{
+    width:76px;height:76px;border-radius:22px;background:var(--gold-grad);
+    display:flex;align-items:center;justify-content:center;margin:0 auto 18px;
+    box-shadow:var(--gold-glow);
+  }
+  .login-logo svg{width:40px;height:40px;fill:var(--on-gold)}
+  .login-wrap h2{text-align:center;font-size:24px;font-weight:800;letter-spacing:-.02em;margin-bottom:6px}
+  .login-wrap .sub{text-align:center;font-size:14px;color:var(--text-secondary);margin-bottom:26px;line-height:1.45}
+  .tg-user{
+    display:flex;align-items:center;gap:12px;width:100%;
+    background:var(--surface-1);border:1px solid var(--border);border-radius:16px;
+    padding:12px 14px;margin-bottom:10px;cursor:pointer;font-family:inherit;text-align:left;
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .tg-user:active{transform:scale(.98)}
+  .tg-user .avatar{width:44px;height:44px;font-size:16px}
+  .tg-user .tg-name{font-size:15.5px;font-weight:700;color:var(--text-primary)}
+  .tg-user .tg-handle{font-size:12.5px;color:var(--text-muted);margin-top:1px}
+  .tg-user .tg-arrow{margin-left:auto;color:var(--text-muted);font-size:18px}
+  .login-note{
+    margin-top:18px;font-size:12px;line-height:1.5;color:var(--text-secondary);
+    background:var(--gold-soft);border:1px solid rgba(240,180,41,.3);
+    border-radius:12px;padding:10px 12px;text-align:center;
+  }
+  /* ============ COMMON COMPONENTS ============ */
+  .chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none;flex:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{
+    flex:none;border:1px solid var(--border);background:var(--surface-1);
+    border-radius:999px;padding:7px 14px;font-family:inherit;font-size:13px;font-weight:600;
+    color:var(--text-secondary);cursor:pointer;white-space:nowrap;
+  }
+  .chip.active{background:var(--gold-grad);color:var(--on-gold);border-color:transparent;box-shadow:0 4px 14px rgba(240,180,41,.3)}
+  .card{
+    background:var(--surface-1);border:1px solid var(--border);border-radius:16px;
+    padding:14px;margin-bottom:10px;
+  }
+  .empty{
+    text-align:center;color:var(--text-muted);font-size:13.5px;padding:38px 20px;line-height:1.5;
+  }
+  .empty .emoji{font-size:34px;display:block;margin-bottom:8px}
+  .fab{
+    position:absolute;right:16px;bottom:92px;z-index:39;
+    width:54px;height:54px;border-radius:50%;border:none;cursor:pointer;
+    background:var(--gold-grad);color:var(--on-gold);font-size:28px;line-height:1;
+    box-shadow:var(--gold-glow);
+    display:flex;align-items:center;justify-content:center;font-family:inherit;
+  }
+  .fab:active{transform:scale(.94)}
+  .badge{display:inline-flex;align-items:center;gap:4px;border-radius:999px;padding:3px 9px;font-size:11px;font-weight:700}
+  .badge.tiktok{background:rgba(77,163,255,.16);color:#7db8ff}
+  .badge.insta{background:rgba(240,180,41,.16);color:#f5c95e}
+  .section-title{font-size:15px;font-weight:800;margin:16px 0 10px;letter-spacing:-.01em}
+  /* ============ BOARD ============ */
+  .day-scroller{display:flex;gap:8px;overflow-x:auto;padding:4px 0 12px;scrollbar-width:none;flex:none}
+  .day-scroller::-webkit-scrollbar{display:none}
+  .day-pill{
+    flex:none;width:52px;padding:8px 0;border-radius:14px;border:1px solid var(--border);
+    background:var(--surface-1);text-align:center;cursor:pointer;font-family:inherit;
+  }
+  .day-pill .dw{font-size:10.5px;font-weight:600;color:var(--text-muted);text-transform:uppercase}
+  .day-pill .dn{font-size:16px;font-weight:700;margin-top:2px}
+  .day-pill.active{background:var(--gold-grad);border-color:transparent;box-shadow:0 4px 14px rgba(240,180,41,.35)}
+  .day-pill.active .dw,.day-pill.active .dn{color:var(--on-gold)}
+  .day-pill .dot{width:5px;height:5px;border-radius:50%;background:var(--gold);margin:3px auto 0}
+  .day-pill.active .dot{background:var(--on-gold)}
+  .day-pill .dot.hidden{visibility:hidden}
+  .board{
+    display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;
+    flex:1;min-height:0;padding:0 16px 96px;scrollbar-width:none;
+  }
+  .board::-webkit-scrollbar{display:none}
+  .board-col{
+    flex:none;width:300px;scroll-snap-align:center;display:flex;flex-direction:column;min-height:0;
+    background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.05);border-radius:18px;
+    padding:0 8px;
+  }
+  .board-col.drop-target{
+    border-color:var(--gold);background:var(--gold-soft);
+    box-shadow:inset 0 0 0 1px var(--gold), 0 0 24px rgba(240,180,41,.18);
+  }
+  .task-card.dragging{opacity:.3}
+  .drag-ghost{
+    position:absolute;z-index:99;pointer-events:none;opacity:.97;
+    transform:rotate(2.5deg) scale(1.05);
+    box-shadow:0 22px 50px rgba(0,0,0,.65), 0 0 30px rgba(240,180,41,.25) !important;
+  }
+  .board-col-head{
+    flex:none;display:flex;align-items:center;gap:8px;padding:12px 6px 10px;
+  }
+  .board-col-head .col-dot{width:9px;height:9px;border-radius:50%}
+  .board-col-head .col-name{font-size:14px;font-weight:800}
+  .board-col-head .col-count{
+    margin-left:auto;font-size:12px;font-weight:700;color:var(--text-secondary);
+    background:var(--surface-1);border:1px solid var(--border);border-radius:999px;padding:2px 9px;
+  }
+  .board-col-body{flex:1;overflow-y:auto;min-height:0;scrollbar-width:none;padding-bottom:8px}
+  .board-col-body::-webkit-scrollbar{display:none}
+  .task-card{
+    background:var(--surface-1);border:1px solid var(--border);border-radius:14px;
+    padding:12px;margin-bottom:8px;cursor:grab;
+    user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;
+  }
+  .task-card .t-title{font-size:14px;font-weight:700;line-height:1.35}
+  .task-card .t-desc{font-size:12.5px;color:var(--text-secondary);margin-top:4px;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .task-foot{display:flex;align-items:center;gap:6px;margin-top:10px}
+  .assignee{
+    display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:var(--text-secondary);
+  }
+  .assignee .mini-av{
+    width:20px;height:20px;border-radius:50%;background:var(--gold-grad);color:var(--on-gold);
+    display:inline-flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;
+  }
+  .move-btns{margin-left:auto;display:flex;gap:6px}
+  .move-btn{
+    width:30px;height:30px;border-radius:10px;border:1px solid var(--border);background:var(--surface-2);
+    cursor:pointer;font-size:14px;color:var(--text-secondary);display:flex;align-items:center;justify-content:center;
+  }
+  .move-btn:disabled{opacity:.3;cursor:default}
+  /* ============ SCENARIOS ============ */
+  .scen-card .s-top{display:flex;align-items:flex-start;gap:8px}
+  .scen-card .s-title{font-size:14.5px;font-weight:700;line-height:1.3;flex:1}
+  .scen-status{flex:none;font-size:11px;font-weight:700;border-radius:999px;padding:3px 9px}
+  .scen-status.idea{background:rgba(155,147,184,.18);color:#b7b0d1}
+  .scen-status.written{background:rgba(77,163,255,.16);color:#7db8ff}
+  .scen-status.filmed{background:rgba(240,180,41,.18);color:#f5c95e}
+  .scen-status.posted{background:rgba(47,191,113,.16);color:#5bd394}
+  .scen-hook{
+    margin-top:8px;font-size:12.5px;line-height:1.45;color:var(--text-primary);
+    background:var(--surface-2);border-left:3px solid var(--accent);border-radius:6px;padding:8px 10px;
+  }
+  .scen-hook b{color:var(--text-muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:2px}
+  .scen-text{font-size:12.5px;color:var(--text-secondary);line-height:1.5;margin-top:8px;white-space:pre-wrap}
+  .scen-text.clamped{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+  .scen-more{border:none;background:none;color:var(--accent);font-family:inherit;font-size:12.5px;font-weight:700;cursor:pointer;padding:6px 0 0}
+  .scen-foot{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap}
+  /* ============ CALENDAR ============ */
+  .cal-nav{display:flex;align-items:center;gap:8px;padding:4px 0 12px}
+  .cal-nav .cal-month{flex:1;text-align:center;font-size:16px;font-weight:800;text-transform:capitalize}
+  .cal-nav button{
+    width:36px;height:36px;border-radius:12px;border:1px solid var(--border);background:var(--surface-1);
+    font-size:16px;cursor:pointer;color:var(--text-secondary);
+  }
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .cal-dow{text-align:center;font-size:10.5px;font-weight:700;color:var(--text-muted);text-transform:uppercase;padding:4px 0}
+  .cal-cell{
+    aspect-ratio:.82;border-radius:12px;border:1px solid var(--border);background:var(--surface-1);
+    display:flex;flex-direction:column;align-items:center;padding-top:6px;gap:3px;cursor:pointer;font-family:inherit;
+  }
+  .cal-cell.out{opacity:0;pointer-events:none}
+  .cal-cell.today{border-color:var(--accent);border-width:2px}
+  .cal-cell .cd{font-size:13px;font-weight:700}
+  .cal-cell .cal-dots{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;padding:0 3px}
+  .pdot{width:7px;height:7px;border-radius:50%}
+  .pdot.tt-planned{border:1.6px solid var(--series-tiktok);background:transparent}
+  .pdot.tt-posted{background:var(--series-tiktok)}
+  .pdot.ig-planned{border:1.6px solid var(--series-insta);background:transparent}
+  .pdot.ig-posted{background:var(--series-insta)}
+  .cal-legend{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:14px;font-size:11.5px;color:var(--text-secondary)}
+  .cal-legend span{display:inline-flex;align-items:center;gap:6px}
+  /* ============ DASHBOARD ============ */
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:4px}
+  .tile{background:var(--surface-1);border:1px solid var(--border);border-radius:16px;padding:12px 14px}
+  .tile .tl-label{font-size:11px;font-weight:700;color:var(--text-muted);display:flex;align-items:center;gap:6px}
+  .tile .tl-dot{width:8px;height:8px;border-radius:50%}
+  .tile .tl-value{font-size:24px;font-weight:800;letter-spacing:-.02em;margin-top:4px}
+  .tile .tl-delta{font-size:12px;font-weight:700;margin-top:2px}
+  .tl-delta.up{color:var(--good-text)}
+  .tl-delta.down{color:var(--critical)}
+  .tl-delta.flat{color:var(--text-muted)}
+  .chart-card{background:var(--surface-1);border:1px solid var(--border);border-radius:16px;padding:14px;margin-bottom:10px}
+  .chart-card h3{font-size:14px;font-weight:800;margin-bottom:2px}
+  .chart-card .ch-sub{font-size:11.5px;color:var(--text-muted);margin-bottom:10px}
+  .chart-box{position:relative;height:190px}
+  .chart-legend{display:flex;gap:16px;margin-top:10px;font-size:12px;font-weight:600;color:var(--text-secondary)}
+  .chart-legend span{display:inline-flex;align-items:center;gap:6px}
+  .chart-legend i{width:14px;height:3px;border-radius:2px;display:inline-block}
+  .stat-row{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--grid)}
+  .stat-row:last-child{border-bottom:none}
+  .stat-row .sr-date{font-size:12.5px;font-weight:700;width:64px;flex:none}
+  .stat-row .sr-vals{flex:1;font-size:12px;color:var(--text-secondary);font-variant-numeric:tabular-nums}
+  .del-btn{
+    border:none;background:none;color:var(--critical);font-size:16px;cursor:pointer;padding:4px 6px;flex:none;
+  }
+  /* ============ ШІ-КРЕАТИВИ ============ */
+  .ai-img{border-radius:14px;overflow:hidden;background:var(--surface-2)}
+  .ai-img img{width:100%;display:block;aspect-ratio:9/16;object-fit:cover}
+  .ai-ph{
+    aspect-ratio:9/10;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:10px;text-align:center;font-size:15px;font-weight:700;color:var(--text-secondary);
+    background:linear-gradient(150deg,#1d1a12,#14130f 60%,#191509);padding:20px;
+  }
+  .ai-row{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+  .like-btn{
+    border:1px solid var(--border);background:var(--surface-2);color:var(--text-secondary);
+    border-radius:999px;padding:8px 16px;font-family:inherit;font-size:13.5px;font-weight:700;cursor:pointer;
+  }
+  .like-btn.liked{background:var(--gold-grad);color:var(--on-gold);border-color:transparent;box-shadow:0 4px 14px rgba(240,180,41,.3)}
+  .like-avs{display:flex;gap:4px}
+  .ai-note{
+    margin-top:10px;font-size:12.5px;line-height:1.45;color:var(--text-secondary);
+    background:var(--surface-2);border-left:3px solid var(--gold);border-radius:6px;padding:8px 10px;
+  }
+  .ai-note b{color:var(--text-primary)}
+  .note-row{display:flex;gap:8px;margin-top:12px}
+  .fix-btn{
+    width:100%;margin-top:10px;border:1px dashed rgba(240,180,41,.5);background:var(--gold-soft);
+    color:var(--gold);border-radius:12px;padding:11px;font-family:inherit;font-size:13.5px;font-weight:800;cursor:pointer;
+  }
+  .fix-btn:active{opacity:.8}
+  /* ============ SHEETS (modals) ============ */
+  .sheet-backdrop{
+    position:absolute;inset:0;background:rgba(10,10,20,.45);z-index:70;
+    opacity:0;pointer-events:none;transition:opacity .2s ease;
+  }
+  .sheet-backdrop.open{opacity:1;pointer-events:auto}
+  .sheet{
+    position:absolute;left:0;right:0;bottom:0;z-index:71;
+    background:var(--surface-1);border-radius:26px 26px 0 0;box-shadow:var(--sheet-shadow);
+    padding:10px 18px calc(20px + env(safe-area-inset-bottom));
+    transform:translateY(105%);transition:transform .25s cubic-bezier(.3,.9,.3,1);
+    max-height:88%;display:flex;flex-direction:column;
+  }
+  .sheet.open{transform:translateY(0)}
+  .sheet-grip{width:40px;height:4px;border-radius:2px;background:var(--baseline);margin:2px auto 12px;flex:none}
+  .sheet h3{font-size:17px;font-weight:800;margin-bottom:14px;flex:none}
+  .sheet-body{overflow-y:auto;min-height:0;scrollbar-width:none}
+  .sheet-body::-webkit-scrollbar{display:none}
+  .f-label{font-size:12px;font-weight:700;color:var(--text-secondary);margin:12px 0 6px;display:block}
+  .f-label:first-child{margin-top:0}
+  .f-input,.f-textarea,.f-select{
+    width:100%;border:1px solid var(--border);background:var(--surface-2);border-radius:12px;
+    padding:11px 12px;font-family:inherit;font-size:14.5px;color:var(--text-primary);outline:none;
+  }
+  .f-input:focus,.f-textarea:focus,.f-select:focus{border-color:var(--accent)}
+  .f-textarea{resize:none;min-height:84px;line-height:1.45}
+  .f-row{display:flex;gap:10px}
+  .f-row>*{flex:1}
+  .seg{display:flex;background:var(--surface-2);border-radius:12px;padding:3px;gap:3px}
+  .seg button{
+    flex:1;border:none;border-radius:9px;padding:9px 4px;font-family:inherit;font-size:12.5px;font-weight:700;
+    background:none;color:var(--text-secondary);cursor:pointer;white-space:nowrap;
+  }
+  .seg button.active{background:var(--surface-3);color:var(--gold);box-shadow:0 1px 6px rgba(0,0,0,.4)}
+  .toggle-row{
+    display:flex;align-items:center;gap:10px;padding:12px 2px;border-bottom:1px solid var(--grid);
+  }
+  .toggle-row:last-of-type{border-bottom:none}
+  .toggle-row .tg-label{flex:1;font-size:14px;font-weight:600}
+  .switch{position:relative;width:48px;height:28px;flex:none;cursor:pointer}
+  .switch input{opacity:0;width:0;height:0}
+  .switch .knob{
+    position:absolute;inset:0;background:var(--baseline);border-radius:999px;transition:background .15s;
+  }
+  .switch .knob::after{
+    content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;
+    background:#fff;transition:transform .15s;box-shadow:0 1px 4px rgba(0,0,0,.25);
+  }
+  .switch input:checked+.knob{background:var(--good)}
+  .switch input:checked+.knob::after{transform:translateX(20px)}
+  .btn{
+    width:100%;border:none;border-radius:14px;padding:14px;font-family:inherit;font-size:15px;font-weight:800;
+    cursor:pointer;margin-top:16px;flex:none;
+  }
+  .btn.primary{background:var(--gold-grad);color:var(--on-gold);box-shadow:0 6px 20px rgba(240,180,41,.28)}
+  .btn.danger{background:none;color:var(--critical);margin-top:6px;padding:10px}
+  .btn:active{opacity:.85}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="phone-screen">
+    <div class="notch"></div>
+    <div class="statusbar">
+      <span id="sb-time">9:41</span>
+      <span class="sb-icons">
+        <svg width="18" height="12" viewBox="0 0 18 12"><g fill="#f6f4ee"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="4.5" y="5" width="3" height="7" rx="1"/><rect x="9" y="2.5" width="3" height="9.5" rx="1"/><rect x="13.5" y="0" width="3" height="12" rx="1"/></g></svg>
+        <svg width="24" height="12" viewBox="0 0 25 12"><rect x="0.5" y="0.5" width="21" height="11" rx="3.5" fill="none" stroke="#f6f4ee" opacity=".4"/><rect x="2" y="2" width="15" height="8" rx="2" fill="#f0b429"/><path d="M23.5 4v4c1-.3 1.5-1 1.5-2s-.5-1.7-1.5-2z" fill="#f6f4ee" opacity=".4"/></svg>
+      </span>
+    </div>
+    <div class="app" id="app"><!-- rendered by JS --></div>
+  </div>
+</div>
+<script>
+/* ================================================================
+   SMM Studio — демо-прототип
+   Дошка завдань · Сценарії · Календар публікацій · Статистика
+   Дані зберігаються локально (демо). Далі — Firebase + Telegram Login.
+   ================================================================ */
+'use strict';
+
+/* ================================================================
+   НАЛАШТУВАННЯ — заповнюється ОДИН раз, див. README-SETUP.md
+   ================================================================ */
+const FIREBASE_CONFIG = {
+  apiKey: "ВСТАВ_СЮДИ",
+  authDomain: "ВСТАВ_СЮДИ.firebaseapp.com",
+  projectId: "ВСТАВ_СЮДИ",
+  storageBucket: "ВСТАВ_СЮДИ.appspot.com",
+  messagingSenderId: "ВСТАВ_СЮДИ",
+  appId: "ВСТАВ_СЮДИ"
+};
+const TG_BOT_USERNAME = "ВСТАВ_СЮДИ";  // юзернейм вашого бота БЕЗ @, напр. electri4ka_bot
+const ALLOWED_TG_IDS = [];             // Telegram ID команди, напр. [123456789, 987654321, 555555555]
+                                       // порожній список [] = пускати будь-кого з Telegram
+const ADMIN_TG_IDS = [];               // Telegram ID адмінів (кнопка «Виправити зараз»), напр. [123456789]
+                                       // порожній список [] = кнопку бачать усі
+/* ================================================================ */
+const CLOUD = !/ВСТАВ_СЮДИ/.test(FIREBASE_CONFIG.apiKey) && location.protocol.startsWith('http');
+
+/* ---------- утиліти ---------- */
+const $ = (s, el=document) => el.querySelector(s);
+const $$ = (s, el=document) => [...el.querySelectorAll(s)];
+const uid = () => Math.random().toString(36).slice(2,10) + Date.now().toString(36);
+const pad = n => String(n).padStart(2,'0');
+const iso = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const fromIso = s => { const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); };
+const todayIso = () => iso(new Date());
+const addDays = (isoStr,n) => { const d=fromIso(isoStr); d.setDate(d.getDate()+n); return iso(d); };
+const DOW = ['Нд','Пн','Вт','Ср','Чт','Пт','Сб'];
+const MONTHS = ['січень','лютий','березень','квітень','травень','червень','липень','серпень','вересень','жовтень','листопад','грудень'];
+const fmtShort = s => { const d=fromIso(s); return `${d.getDate()}.${pad(d.getMonth()+1)}`; };
+const fmtNum = n => n>=1000000 ? (n/1000000).toFixed(1).replace('.0','')+' млн' : n>=10000 ? Math.round(n/1000)+' тис' : n.toLocaleString('uk-UA');
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const initials = name => name.split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+
+/* ---------- безпечне сховище (localStorage → пам'ять) ---------- */
+const memStore = {};
+const storage = {
+  get(k){ try { return localStorage.getItem(k); } catch(e){ return memStore[k] ?? null; } },
+  set(k,v){ try { localStorage.setItem(k,v); } catch(e){ memStore[k]=v; } }
+};
+
+/* ---------- команда ----------
+   У хмарному режимі — реальні люди з Telegram Login.
+   У демо-режимі — три тестові профілі. */
+const DEMO_TEAM = [
+  { id:'u1', first:'Роман',  last:'Щетінін',  handle:'@roman',  photo:'' },
+  { id:'u2', first:'Олена',  last:'Коваленко', handle:'@olena',  photo:'' },
+  { id:'u3', first:'Максим', last:'Бондар',   handle:'@maksym', photo:'' },
+];
+function teamMembers(){
+  if (state && state.team && Object.keys(state.team).length)
+    return Object.entries(state.team).map(([id,m])=>({id, ...m}));
+  return DEMO_TEAM;
+}
+const teamSize = () => Math.max(teamMembers().length, CLOUD ? 1 : 3);
+const fullName = u => `${u.first||''} ${u.last||''}`.trim() || 'Без імені';
+const teamById = id => teamMembers().find(u=>u.id===id) || teamMembers()[0] || {first:'?',last:'',photo:''};
+function isAdmin(){
+  if (!state || !state.user) return false;
+  if (!CLOUD) return state.user === 'u1'; // у демо адмін — перший профіль
+  if (!ADMIN_TG_IDS.length) return true;
+  const me = teamById(state.user);
+  return ADMIN_TG_IDS.includes(me.tgId);
+}
+const avBg = u => u && u.photo ? `background:url('${esc(u.photo)}') center/cover;color:transparent;` : '';
+
+/* ---------- статуси дошки ---------- */
+const COLS = [
+  { key:'plan',   name:'Планується',           dot:'var(--col-plan)' },
+  { key:'doing',  name:'Робиться',             dot:'var(--col-doing)' },
+  { key:'review', name:'Готово до перевірки',  dot:'var(--col-review)' },
+  { key:'done',   name:'Зроблено',             dot:'var(--col-done)' },
+];
+const SCEN_STATUSES = [
+  { key:'idea',    name:'Ідея' },
+  { key:'written', name:'Написано' },
+  { key:'filmed',  name:'Знято' },
+  { key:'posted',  name:'Опубліковано' },
+];
+
+/* ---------- стан ---------- */
+let state = null;
+const ui = {
+  tab:'board',
+  boardDate: todayIso(),
+  calMonth: (()=>{ const d=new Date(); return {y:d.getFullYear(), m:d.getMonth()}; })(),
+  chartMetric:'followers',
+  chartRange:30,
+  scenFilter:'all',
+  statsTable:false,
+};
+let charts = {};
+
+/* ---------- синхронізація: Firestore (хмара) або localStorage (демо) ---------- */
+let db = null, pendingRender = false;
+const SECTIONS = ['tasks','scenarios','calendar','stats','team','ai'];
+const lastSynced = {};
+
+function scheduleRender(){
+  // не смикаємо екран, поки відкрита шторка — оновимо після закриття
+  const sheet = $('#sheet');
+  if (sheet && sheet.classList.contains('open')){ pendingRender = true; return; }
+  render();
+}
+
+function initCloud(){
+  firebase.initializeApp(FIREBASE_CONFIG);
+  db = firebase.firestore();
+  firebase.auth().onAuthStateChanged(u=>{
+    if (!u) return;
+    SECTIONS.forEach(sec=>{
+      db.collection('app').doc(sec).onSnapshot(doc=>{
+        if (doc.metadata.hasPendingWrites) return; // це наш власний запис
+        if (!doc.exists) return;
+        const data = doc.data().data;
+        if (data === undefined || data === null) return;
+        state[sec] = data;
+        lastSynced[sec] = JSON.stringify(data);
+        scheduleRender();
+      }, err=>console.error('[sync]', sec, err));
+    });
+  });
+  firebase.auth().signInAnonymously().catch(e=>{
+    console.error('[auth]', e);
+    alertBanner('Не вдалося підключитися до бази. Перевір, що в Firebase увімкнено Anonymous-вхід (README, крок 3).');
+  });
+}
+
+function alertBanner(msg){
+  const el = document.createElement('div');
+  el.style.cssText = 'position:absolute;top:60px;left:16px;right:16px;z-index:90;background:#3a1d1d;border:1px solid var(--critical);color:#f0c9c9;border-radius:14px;padding:12px 14px;font-size:13px;line-height:1.4';
+  el.textContent = msg;
+  $('.app').appendChild(el);
+  setTimeout(()=>el.remove(), 8000);
+}
+
+function save(){
+  if (CLOUD){
+    storage.set('smm_user', state.user || '');
+    if (!db) return;
+    SECTIONS.forEach(sec=>{
+      const cur = JSON.stringify(state[sec] ?? null);
+      if (cur !== lastSynced[sec]){
+        lastSynced[sec] = cur;
+        db.collection('app').doc(sec).set({ data: JSON.parse(cur), updatedAt: Date.now() })
+          .catch(e=>console.error('[save]', sec, e));
+      }
+    });
+  } else {
+    storage.set('smm_demo_v1', JSON.stringify(state));
+  }
+}
+
+function load(){
+  if (CLOUD){
+    state = { user: storage.get('smm_user') || null,
+              tasks:[], scenarios:[], calendar:{}, stats:[], team:{}, ai:{} };
+    initCloud();
+  } else {
+    const raw = storage.get('smm_demo_v1');
+    if (raw){ try { state = JSON.parse(raw); } catch(e){ state = null; } }
+    if (!state) state = seed();
+    if (!state.team) state.team = Object.fromEntries(DEMO_TEAM.map(u=>[u.id,{first:u.first,last:u.last,handle:u.handle,photo:''}]));
+    if (!state.ai) state.ai = {};
+    save();
+  }
+}
+
+/* ---------- демо-дані ---------- */
+function seed(){
+  const t = todayIso();
+  const tasks = [
+    { id:uid(), title:'Зняти хук для відео про ранкові звички', desc:'Локація — кухня, денне світло. 3 дублі.', assignee:'u2', date:t, status:'plan' },
+    { id:uid(), title:'Написати сценарій «5 помилок новачків»', desc:'Формат: швидкий перелік + приклад на кожну помилку.', assignee:'u1', date:t, status:'plan' },
+    { id:uid(), title:'Змонтувати Reels з бекстейджем', desc:'Субтитри жовтим, музика з трендів цього тижня.', assignee:'u3', date:t, status:'doing' },
+    { id:uid(), title:'Обкладинки для трьох нових відео', desc:'Стиль як у попередній серії, великий заголовок.', assignee:'u2', date:t, status:'review' },
+    { id:uid(), title:'Виставити вчорашнє відео в TikTok', desc:'Опис + 5 хештегів, закріпити коментар.', assignee:'u1', date:t, status:'done' },
+    { id:uid(), title:'Відповісти на коментарі за вчора', desc:'TikTok і Instagram, мінімум 20 відповідей.', assignee:'u3', date:addDays(t,1), status:'plan' },
+    { id:uid(), title:'Зйомка двох відео на тиждень', desc:'Сценарії №4 і №5, студія о 15:00.', assignee:'u2', date:addDays(t,1), status:'plan' },
+  ];
+  const scenarios = [
+    { id:uid(), title:'5 помилок, які вбивають охоплення', platform:'both', status:'written',
+      hook:'«Ти робиш це в кожному відео — і саме тому його ніхто не бачить»',
+      text:'1. Довгий вступ — перші 2 секунди мають чіпляти.\n2. Немає субтитрів — 70% дивляться без звуку.\n3. Заклик до дії на початку, а не в кінці.\n4. Одне відео на тиждень — алгоритм любить стабільність.\n5. Ігнор коментарів у першу годину після публікації.' },
+    { id:uid(), title:'Ранок SMM-ника: бекстейдж', platform:'insta', status:'filmed',
+      hook:'«Ніхто не показує, як насправді виглядає робота з контентом»',
+      text:'Швидка нарізка: кава → розкадровка → зйомка → монтаж → публікація. Кожен кадр 0.7–1 с, фінал — статистика на екрані. Музика спокійна, texto мінімум.' },
+    { id:uid(), title:'Тренд: «очікування vs реальність»', platform:'tiktok', status:'idea',
+      hook:'«Замовили відео за 200 грн — ось що отримали»',
+      text:'Перша половина — «очікування» (гарна картинка), різкий перехід за бітом — «реальність». Дати нашу версію того, як зробити добре навіть з малим бюджетом.' },
+  ];
+  // календар: останній тиждень
+  const calendar = {};
+  calendar[addDays(t,-6)] = { ttPlanned:true, ttPosted:true,  igPlanned:true, igPosted:true,  note:'' };
+  calendar[addDays(t,-4)] = { ttPlanned:true, ttPosted:true,  igPlanned:false,igPosted:false, note:'' };
+  calendar[addDays(t,-2)] = { ttPlanned:true, ttPosted:true,  igPlanned:true, igPosted:true,  note:'' };
+  calendar[addDays(t,-1)] = { ttPlanned:true, ttPosted:false, igPlanned:true, igPosted:true,  note:'TikTok не встигли — переносимо' };
+  calendar[t]             = { ttPlanned:true, ttPosted:false, igPlanned:true, igPosted:false, note:'' };
+  calendar[addDays(t,2)]  = { ttPlanned:true, ttPosted:false, igPlanned:false,igPosted:false, note:'' };
+  // статистика: 3 тижні, зростання
+  const stats = [];
+  let ttF=1180, igF=860, ttV=2400, igV=1500;
+  for (let i=20;i>=0;i-=2){
+    ttF += Math.round(14 + i*1.2 + (i%3)*9);
+    igF += Math.round(8 + (i%4)*6);
+    ttV = Math.round(ttV * (1 + 0.05 + (i%5)*0.012));
+    igV = Math.round(igV * (1 + 0.03 + (i%4)*0.01));
+    stats.push({ id:uid(), date:addDays(t,-i), platform:'tiktok', followers:ttF, views:ttV, likes:Math.round(ttV*0.09), comments:Math.round(ttV*0.011) });
+    stats.push({ id:uid(), date:addDays(t,-i), platform:'insta',  followers:igF, views:igV, likes:Math.round(igV*0.07), comments:Math.round(igV*0.009) });
+  }
+  return { user:null, tasks, scenarios, calendar, stats,
+    team: Object.fromEntries(DEMO_TEAM.map(u=>[u.id,{first:u.first,last:u.last,handle:u.handle,photo:''}])),
+    ai: {} };
+}
+
+/* ---------- демо-креативи для вкладки ШІ (без хмари) ---------- */
+const DEMO_CREATIVES = [
+  { id:'demo-2', date: todayIso(), file:null, title:'Voyah Free · Будні — на струмі',
+    caption:'Сторіс: 259 км на батареї = тиждень поїздок Львовом. CTA — тест-драйв.' },
+  { id:'demo-1', date: todayIso(), file:null, title:'NIO · Батарея за 3 хвилини',
+    caption:'Сторіс про swap-станції: заміна батареї швидша за каву. CTA — деталі в дірект.' },
+];
+/* ================= РЕНДЕР ================= */
+const app = $('#app');
+
+const ICONS = {
+  board:'<svg viewBox="0 0 24 24"><rect x="3" y="4" width="5.5" height="16" rx="1.5"/><rect x="10" y="4" width="5.5" height="10" rx="1.5"/><rect x="17" y="4" width="4" height="13" rx="1.5"/></svg>',
+  scen:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 9h18M8 5l2 4M14 5l2 4"/></svg>',
+  cal:'<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>',
+  stats:'<svg viewBox="0 0 24 24"><path d="M4 19V5"/><path d="M4 19h16"/><path d="M8 15l3.5-4 3 2.5L19 8"/></svg>',
+  ai:'<svg viewBox="0 0 24 24"><path d="M12 3l1.8 4.9L19 9.7l-4.4 3.4L16 18l-4-2.9L8 18l1.4-4.9L5 9.7l5.2-.8L12 3z"/><path d="M19 3l.6 1.6L21 5.2l-1.4.5L19 7.5l-.6-1.8L17 5.2l1.4-.6L19 3z"/></svg>',
+};
+
+function render(){
+  if (!state.user){ renderLogin(); return; }
+  renderShell();
+  renderTab();
+}
+
+/* ---------- логін ---------- */
+function renderLogin(){
+  const logo = `
+      <div class="login-logo">
+        <svg viewBox="0 0 24 24"><path d="M21.9 3.2 18.6 20c-.2 1-1 1.3-1.8.8l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1L18 6.4c.4-.4-.1-.6-.7-.2L5.8 13.4l-4.9-1.5c-1-.3-1-1 .2-1.5L20.5 2c.9-.4 1.7.2 1.4 1.2z"/></svg>
+      </div>
+      <h2>ELECTRI4KA · SMM</h2>`;
+  if (CLOUD){
+    app.innerHTML = `
+    <div class="screen active" id="screen-login">
+      <div class="login-wrap">
+        ${logo}
+        <p class="sub">Увійди через Telegram —<br>ім'я і фото підтягнуться автоматично.</p>
+        <div id="tg-widget" style="display:flex;justify-content:center;min-height:54px;margin-top:10px"></div>
+        <div class="login-note" id="login-note">Команда бачить спільну дошку, сценарії, креативи від ШІ і статистику — все синхронізується автоматично.</div>
+      </div>
+    </div>`;
+    const s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://telegram.org/js/telegram-widget.js?22';
+    s.setAttribute('data-telegram-login', TG_BOT_USERNAME);
+    s.setAttribute('data-size', 'large');
+    s.setAttribute('data-radius', '20');
+    s.setAttribute('data-userpic', 'true');
+    s.setAttribute('data-request-access', 'write');
+    s.setAttribute('data-onauth', 'onTelegramAuth(user)');
+    $('#tg-widget').appendChild(s);
+    return;
+  }
+  app.innerHTML = `
+  <div class="screen active" id="screen-login">
+    <div class="login-wrap">
+      ${logo}
+      <p class="sub">Вхід через Telegram.<br>Обери свій акаунт, щоб продовжити.</p>
+      ${DEMO_TEAM.map(u=>`
+        <button class="tg-user" data-login="${u.id}">
+          <span class="avatar">${initials(fullName(u))}</span>
+          <span>
+            <span class="tg-name">${esc(fullName(u))}</span><br>
+            <span class="tg-handle">${esc(u.handle)} · Telegram</span>
+          </span>
+          <span class="tg-arrow">›</span>
+        </button>`).join('')}
+      <div class="login-note">🔧 Це демо-режим. Після налаштування за README-SETUP.md тут буде справжня кнопка «Увійти через Telegram».</div>
+    </div>
+  </div>`;
+  $$('[data-login]').forEach(b => b.onclick = () => {
+    state.user = b.dataset.login; save(); ui.tab='board'; render();
+  });
+}
+
+/* колбек віджета Telegram */
+window.onTelegramAuth = function(user){
+  if (ALLOWED_TG_IDS.length && !ALLOWED_TG_IDS.includes(user.id)){
+    const n = $('#login-note');
+    if (n){ n.textContent = `Акаунт ${user.first_name} (id ${user.id}) не в списку команди. Додайте цей id в ALLOWED_TG_IDS у index.html.`; }
+    return;
+  }
+  const id = 'tg' + user.id;
+  state.team = state.team || {};
+  state.team[id] = {
+    first: user.first_name || '',
+    last: user.last_name || '',
+    handle: user.username ? '@'+user.username : '',
+    photo: user.photo_url || '',
+    tgId: user.id,
+  };
+  state.user = id;
+  save(); ui.tab='board'; render();
+};
+
+/* ---------- каркас з таб-баром ---------- */
+function renderShell(){
+  const u = teamById(state.user);
+  const titles = { board:'Дошка завдань', scen:'Сценарії', ai:'ШІ-креативи', cal:'Календар', stats:'Статистика' };
+  app.innerHTML = `
+    <div class="app-header">
+      <h1 id="page-title">${titles[ui.tab]}</h1>
+      <button class="avatar" id="btn-user" title="${esc(fullName(u))}" style="${avBg(u)}">${u.photo?'':initials(fullName(u))}</button>
+    </div>
+    <div class="screen active" id="tab-content" style="min-height:0"></div>
+    <button class="fab" id="fab" style="display:none">+</button>
+    <nav class="tabbar">
+      ${[['board','Дошка'],['scen','Сценарії'],['ai','ШІ'],['cal','Календар'],['stats','Статистика']].map(([k,n])=>`
+        <button class="tab-btn ${ui.tab===k?'active':''}" data-tab="${k}">${ICONS[k]}<span>${n}</span></button>`).join('')}
+    </nav>
+    <div class="sheet-backdrop" id="backdrop"></div>
+    <div class="sheet" id="sheet"><div class="sheet-grip"></div><div id="sheet-inner" style="display:flex;flex-direction:column;min-height:0"></div></div>
+  `;
+  $$('[data-tab]').forEach(b => b.onclick = () => { ui.tab=b.dataset.tab; render(); });
+  $('#backdrop').onclick = closeSheet;
+  $('#btn-user').onclick = () => openUserSheet();
+}
+
+function renderTab(){
+  const c = $('#tab-content');
+  const fab = $('#fab');
+  fab.style.display = ui.tab==='cal' ? 'none' : 'flex';
+  if (ui.tab==='board'){ renderBoard(c); fab.onclick=()=>openTaskSheet(null); }
+  if (ui.tab==='scen'){ renderScenarios(c); fab.onclick=()=>openScenSheet(null); }
+  if (ui.tab==='ai'){ fab.style.display='none'; renderAI(c); }
+  if (ui.tab==='cal'){ renderCalendar(c); }
+  if (ui.tab==='stats'){ renderStats(c); fab.onclick=()=>openStatSheet(null); }
+}
+
+/* ---------- ШІ-КРЕАТИВИ ---------- */
+let creativesIndex = null; // null = ще не завантажували
+async function loadCreativesIndex(){
+  if (!CLOUD){ creativesIndex = DEMO_CREATIVES; return; }
+  try{
+    const r = await fetch('creatives/index.json?ts=' + Date.now(), {cache:'no-store'});
+    creativesIndex = r.ok ? ((await r.json()).creatives || []) : [];
+  }catch(e){ creativesIndex = []; }
+}
+function aiFb(id){
+  state.ai = state.ai || {};
+  if (!state.ai[id]) state.ai[id] = { likes:{}, notes:[] };
+  if (!state.ai[id].likes) state.ai[id].likes = {};
+  if (!state.ai[id].notes) state.ai[id].notes = [];
+  return state.ai[id];
+}
+function renderAI(c){
+  if (creativesIndex === null){
+    c.innerHTML = `<div class="content"><div class="empty"><span class="emoji">✨</span>Завантажую креативи…</div></div>`;
+    loadCreativesIndex().then(()=>{ if (ui.tab==='ai') renderTab(); });
+    return;
+  }
+  const list = [...creativesIndex].sort((a,b)=>a.id<b.id?1:-1);
+  let lastDate = null;
+  const cards = list.map(cr=>{
+    const fb = state.ai && state.ai[cr.id] ? state.ai[cr.id] : {likes:{},notes:[]};
+    const likes = Object.keys(fb.likes||{});
+    const total = teamSize();
+    const approved = likes.length >= total;
+    const hasNotes = (fb.notes||[]).length > 0;
+    const myLike = state.user && fb.likes && fb.likes[state.user];
+    const fixing = fb.fix && !fb.fix.done;
+    const status = fixing
+      ? `<span class="scen-status filmed">⚡ У роботі — виправлення вже генерується</span>`
+      : approved
+        ? `<span class="scen-status posted">✔ Затверджено — виставляю</span>`
+        : hasNotes
+          ? `<span class="scen-status filmed">✍ Є нотатки</span>`
+          : `<span class="scen-status idea">${likes.length}/${total} лайків</span>`;
+    const dateHead = cr.date !== lastDate
+      ? `<div class="section-title">${cr.date===todayIso()?'Сьогодні':fmtShort(cr.date)} · нові креативи</div>` : '';
+    lastDate = cr.date;
+    return `${dateHead}<div class="card ai-card">
+      <div class="ai-img">${cr.file
+        ? `<img src="${esc(cr.file)}" loading="lazy" alt="">`
+        : `<div class="ai-ph">✨<br>${esc(cr.title||'Креатив')}</div>`}</div>
+      ${cr.title?`<div class="t-title" style="margin-top:12px">${esc(cr.title)}</div>`:''}
+      ${cr.caption?`<div class="t-desc" style="margin-top:4px;-webkit-line-clamp:4">${esc(cr.caption)}</div>`:''}
+      <div class="ai-row">
+        <button class="like-btn ${myLike?'liked':''}" data-like="${cr.id}">${myLike?'♥':'♡'} Лайк</button>
+        <span class="like-avs">${likes.map(uid=>{const m=teamById(uid);return `<span class="mini-av" style="${avBg(m)}" title="${esc(fullName(m))}">${m.photo?'':initials(fullName(m))}</span>`;}).join('')}</span>
+        <span style="margin-left:auto">${status}</span>
+      </div>
+      ${(fb.notes||[]).map(n=>`<div class="ai-note"><b>${esc(n.name||'')}</b>: ${esc(n.text)}</div>`).join('')}
+      <div class="note-row">
+        <input class="f-input" style="flex:1;padding:9px 12px;font-size:13.5px" placeholder="Нотатка для ШІ: що виправити…" data-note-input="${cr.id}">
+        <button class="chip" data-note-send="${cr.id}" style="padding:9px 14px">→</button>
+      </div>
+      ${isAdmin() && !fixing && !approved ? `<button class="fix-btn" data-fix="${cr.id}">⚡ Виправити зараз</button>` : ''}
+    </div>`;
+  }).join('');
+  c.innerHTML = `<div class="content">
+    <div class="card" style="background:var(--gold-soft);border-color:rgba(240,180,41,.3)">
+      <div style="font-size:13px;line-height:1.55;color:var(--text-secondary)">
+        <b style="color:var(--text-primary)">✨ Як це працює:</b> щодня о 12:00 ШІ викладає сюди 5–7 креативів.
+        Лайк від усіх ${teamSize()} — креатив затверджений, і ШІ надішле фінальний файл у Telegram.
+        Написали нотатку і натиснули «⚡ Виправити зараз» — виправлена версія прилетить протягом години.
+      </div>
+    </div>
+    ${cards || `<div class="empty"><span class="emoji">🕛</span>Креативів поки немає.<br>Перша партія з'явиться о 12:00.</div>`}
+  </div>`;
+  $$('[data-like]', c).forEach(b=>b.onclick = ()=>{
+    const fb = aiFb(b.dataset.like);
+    if (fb.likes[state.user]) delete fb.likes[state.user];
+    else fb.likes[state.user] = true;
+    save(); render();
+  });
+  $$('[data-note-send]', c).forEach(b=>b.onclick = ()=>{
+    const inp = $(`[data-note-input="${b.dataset.noteSend}"]`, c);
+    const text = inp.value.trim();
+    if (!text) return;
+    const me = teamById(state.user);
+    aiFb(b.dataset.noteSend).notes.push({ by:state.user, name:me.first, text, at:Date.now() });
+    save(); render();
+  });
+  $$('[data-note-input]', c).forEach(inp=>inp.onkeydown = e=>{
+    if (e.key==='Enter') $(`[data-note-send="${inp.dataset.noteInput}"]`, c).click();
+  });
+  $$('[data-fix]', c).forEach(b=>b.onclick = ()=>{
+    const id = b.dataset.fix;
+    const inp = $(`[data-note-input="${id}"]`, c);
+    const text = inp && inp.value.trim();
+    if (text){ // якщо в полі вже щось написано — зберігаємо як нотатку разом із запитом
+      const me = teamById(state.user);
+      aiFb(id).notes.push({ by:state.user, name:me.first, text, at:Date.now() });
+    }
+    aiFb(id).fix = { requested:true, by:state.user, at:Date.now() };
+    save(); render();
+  });
+}
+
+/* ---------- ДОШКА ---------- */
+function renderBoard(c){
+  const days = [];
+  for (let i=-3;i<=10;i++) days.push(addDays(todayIso(),i));
+  const tasksOf = d => state.tasks.filter(t=>t.date===d);
+  const sel = ui.boardDate;
+  c.innerHTML = `
+    <div style="padding:0 16px;flex:none">
+      <div class="day-scroller" id="days">
+        ${days.map(d=>{ const dt=fromIso(d); const has=tasksOf(d).length>0;
+          return `<button class="day-pill ${d===sel?'active':''}" data-day="${d}">
+            <div class="dw">${DOW[dt.getDay()]}</div><div class="dn">${dt.getDate()}</div>
+            <div class="dot ${has?'':'hidden'}"></div></button>`; }).join('')}
+      </div>
+    </div>
+    <div class="board" id="board">
+      ${COLS.map(col=>{
+        const list = tasksOf(sel).filter(t=>t.status===col.key);
+        return `<div class="board-col">
+          <div class="board-col-head">
+            <span class="col-dot" style="background:${col.dot}"></span>
+            <span class="col-name">${col.name}</span>
+            <span class="col-count">${list.length}</span>
+          </div>
+          <div class="board-col-body">
+            ${list.length? list.map(taskCard).join('') : `<div class="empty" style="padding:22px 10px"><span class="emoji">📭</span>Немає завдань</div>`}
+          </div>
+        </div>`; }).join('')}
+    </div>`;
+  // прокрутка до вибраного дня
+  const active = $('.day-pill.active', c);
+  if (active) active.scrollIntoView({inline:'center', block:'nearest'});
+  $$('[data-day]', c).forEach(b => b.onclick = () => { ui.boardDate=b.dataset.day; render(); });
+  $$('[data-move]', c).forEach(b => b.onclick = (e) => {
+    e.stopPropagation();
+    const t = state.tasks.find(x=>x.id===b.dataset.id);
+    const idx = COLS.findIndex(x=>x.key===t.status) + (+b.dataset.move);
+    if (idx>=0 && idx<COLS.length){ t.status = COLS[idx].key; save(); render(); }
+  });
+  $$('[data-edit-task]', c).forEach(el => el.onclick = () => {
+    if (dnd.justDropped){ dnd.justDropped=false; return; }
+    openTaskSheet(el.dataset.editTask);
+  });
+  enableDrag(c);
+}
+
+/* ---------- drag & drop завдань ---------- */
+const dnd = { justDropped:false };
+function enableDrag(c){
+  const board = $('#board', c);
+  let d = null; // поточне перетягування
+
+  const cleanup = () => {
+    if (!d) return;
+    clearTimeout(d.timer);
+    if (d.raf) cancelAnimationFrame(d.raf);
+    d.ghost?.remove();
+    d.card?.classList.remove('dragging');
+    $$('.board-col', c).forEach(col=>col.classList.remove('drop-target'));
+    d = null;
+  };
+
+  const activate = () => {
+    if (!d || d.active) return;
+    d.active = true;
+    const rect = d.card.getBoundingClientRect();
+    const scr = $('.phone-screen');
+    const sr = scr.getBoundingClientRect();
+    d.srLeft = sr.left; d.srTop = sr.top;
+    const ghost = d.card.cloneNode(true);
+    ghost.classList.add('drag-ghost');
+    ghost.style.left = (rect.left - sr.left)+'px';
+    ghost.style.top = (rect.top - sr.top)+'px';
+    ghost.style.width = rect.width+'px';
+    scr.appendChild(ghost);
+    d.ghost = ghost;
+    d.offX = d.startX - rect.left;
+    d.offY = d.startY - rect.top;
+    d.card.classList.add('dragging');
+    if (navigator.vibrate) try{ navigator.vibrate(10); }catch(e){}
+    autoScroll();
+  };
+
+  const colUnder = (x,y) => {
+    const el = document.elementFromPoint(x,y);
+    return el ? el.closest('.board-col') : null;
+  };
+
+  const autoScroll = () => {
+    if (!d || !d.active) return;
+    const br = board.getBoundingClientRect();
+    const x = d.curX;
+    if (x > br.right-56) board.scrollLeft += 11;
+    else if (x < br.left+56) board.scrollLeft -= 11;
+    d.raf = requestAnimationFrame(autoScroll);
+  };
+
+  const onMove = e => {
+    if (!d) return;
+    d.curX = e.clientX; d.curY = e.clientY;
+    const dist = Math.hypot(e.clientX-d.startX, e.clientY-d.startY);
+    if (!d.active){
+      if (dist > 10){ cleanup(); } // це скрол, не перетягування
+      return;
+    }
+    e.preventDefault();
+    d.ghost.style.left = (e.clientX - d.offX - d.srLeft)+'px';
+    d.ghost.style.top = (e.clientY - d.offY - d.srTop)+'px';
+    const col = colUnder(e.clientX, e.clientY);
+    $$('.board-col', c).forEach(cl=>cl.classList.toggle('drop-target', cl===col));
+  };
+
+  const onUp = e => {
+    if (!d) return;
+    if (d.active){
+      const col = colUnder(e.clientX, e.clientY);
+      const idx = col ? [...$$('.board-col', c)].indexOf(col) : -1;
+      const task = state.tasks.find(t=>t.id===d.id);
+      dnd.justDropped = true;
+      setTimeout(()=>{ dnd.justDropped=false; }, 350);
+      cleanup();
+      if (idx>=0 && task && task.status!==COLS[idx].key){
+        task.status = COLS[idx].key; save(); render();
+      }
+    } else cleanup();
+  };
+
+  $$('.task-card', c).forEach(card => {
+    card.addEventListener('pointerdown', e => {
+      if (e.target.closest('.move-btn') || e.button===2) return;
+      cleanup();
+      d = { id:card.dataset.editTask, card, startX:e.clientX, startY:e.clientY,
+            curX:e.clientX, curY:e.clientY, active:false };
+      d.timer = setTimeout(activate, 200);
+    });
+    card.addEventListener('contextmenu', e => { if (d) e.preventDefault(); });
+  });
+  const onTouch = e => { if (d && d.active) e.preventDefault(); };
+  if (dnd.unbind) dnd.unbind(); // не накопичуємо слухачів між рендерами
+  window.addEventListener('pointermove', onMove, {passive:false});
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('pointercancel', cleanup);
+  window.addEventListener('touchmove', onTouch, {passive:false});
+  dnd.unbind = () => {
+    window.removeEventListener('pointermove', onMove);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('pointercancel', cleanup);
+    window.removeEventListener('touchmove', onTouch);
+  };
+}
+
+function taskCard(t){
+  const u = teamById(t.assignee);
+  const idx = COLS.findIndex(x=>x.key===t.status);
+  return `<div class="task-card" data-edit-task="${t.id}">
+    <div class="t-title">${esc(t.title)}</div>
+    ${t.desc?`<div class="t-desc">${esc(t.desc)}</div>`:''}
+    <div class="task-foot">
+      <span class="assignee"><span class="mini-av" style="${avBg(u)}">${u.photo?'':initials(fullName(u))}</span>${esc(u.first)}</span>
+      <span class="move-btns">
+        <button class="move-btn" data-move="-1" data-id="${t.id}" ${idx===0?'disabled':''}>‹</button>
+        <button class="move-btn" data-move="1" data-id="${t.id}" ${idx===COLS.length-1?'disabled':''}>›</button>
+      </span>
+    </div>
+  </div>`;
+}
+
+/* ---------- СЦЕНАРІЇ ---------- */
+function renderScenarios(c){
+  const filters = [['all','Усі'],['tiktok','TikTok'],['insta','Instagram'],...SCEN_STATUSES.map(s=>[s.key,s.name])];
+  let list = [...state.scenarios].reverse();
+  if (['tiktok','insta'].includes(ui.scenFilter)) list = list.filter(s=>s.platform===ui.scenFilter||s.platform==='both');
+  else if (ui.scenFilter!=='all') list = list.filter(s=>s.status===ui.scenFilter);
+  c.innerHTML = `<div class="content">
+    <div class="chips">${filters.map(([k,n])=>`<button class="chip ${ui.scenFilter===k?'active':''}" data-filter="${k}">${n}</button>`).join('')}</div>
+    ${list.length ? list.map(scenCard).join('') :
+      `<div class="empty"><span class="emoji">🎬</span>Поки немає сценаріїв.<br>Натисни «+», щоб додати перший.</div>`}
+  </div>`;
+  $$('[data-filter]', c).forEach(b => b.onclick = () => { ui.scenFilter=b.dataset.filter; render(); });
+  $$('[data-edit-scen]', c).forEach(b => b.onclick = () => openScenSheet(b.dataset.editScen));
+  $$('[data-expand]', c).forEach(b => b.onclick = () => {
+    const txt = $(`#stext-${b.dataset.expand}`, c);
+    const open = txt.classList.toggle('clamped');
+    b.textContent = open ? 'Читати повністю' : 'Згорнути';
+  });
+}
+
+function platformBadges(p){
+  const tt = `<span class="badge tiktok">♪ TikTok</span>`;
+  const ig = `<span class="badge insta">◎ Instagram</span>`;
+  return p==='both' ? tt+ig : p==='tiktok' ? tt : ig;
+}
+
+function scenCard(s){
+  const st = SCEN_STATUSES.find(x=>x.key===s.status);
+  return `<div class="card scen-card">
+    <div class="s-top">
+      <div class="s-title">${esc(s.title)}</div>
+      <span class="scen-status ${s.status}">${st.name}</span>
+    </div>
+    ${s.hook?`<div class="scen-hook"><b>Хук</b>${esc(s.hook)}</div>`:''}
+    ${s.text?`<div class="scen-text clamped" id="stext-${s.id}">${esc(s.text)}</div>
+      <button class="scen-more" data-expand="${s.id}">Читати повністю</button>`:''}
+    <div class="scen-foot">
+      ${platformBadges(s.platform)}
+      <button class="chip" style="margin-left:auto;padding:5px 12px" data-edit-scen="${s.id}">Редагувати</button>
+    </div>
+  </div>`;
+}
+/* ---------- КАЛЕНДАР ---------- */
+function renderCalendar(c){
+  const {y,m} = ui.calMonth;
+  const first = new Date(y,m,1);
+  const startDow = (first.getDay()+6)%7; // Пн=0
+  const daysIn = new Date(y,m+1,0).getDate();
+  const t = todayIso();
+  let cells = '';
+  for (let i=0;i<startDow;i++) cells += `<div class="cal-cell out"></div>`;
+  for (let d=1;d<=daysIn;d++){
+    const dIso = `${y}-${pad(m+1)}-${pad(d)}`;
+    const e = state.calendar[dIso];
+    let dots = '';
+    if (e){
+      if (e.ttPosted) dots += `<span class="pdot tt-posted"></span>`;
+      else if (e.ttPlanned) dots += `<span class="pdot tt-planned"></span>`;
+      if (e.igPosted) dots += `<span class="pdot ig-posted"></span>`;
+      else if (e.igPlanned) dots += `<span class="pdot ig-planned"></span>`;
+    }
+    cells += `<button class="cal-cell ${dIso===t?'today':''}" data-cal="${dIso}">
+      <span class="cd">${d}</span><span class="cal-dots">${dots}</span></button>`;
+  }
+  c.innerHTML = `<div class="content">
+    <div class="cal-nav">
+      <button id="cal-prev">‹</button>
+      <div class="cal-month">${MONTHS[m]} ${y}</div>
+      <button id="cal-next">›</button>
+    </div>
+    <div class="cal-grid">
+      ${['Пн','Вт','Ср','Чт','Пт','Сб','Нд'].map(d=>`<div class="cal-dow">${d}</div>`).join('')}
+      ${cells}
+    </div>
+    <div class="cal-legend">
+      <span><span class="pdot tt-planned"></span>TikTok — заплановано</span>
+      <span><span class="pdot tt-posted"></span>TikTok — виставлено</span>
+      <span><span class="pdot ig-planned"></span>Instagram — заплановано</span>
+      <span><span class="pdot ig-posted"></span>Instagram — виставлено</span>
+    </div>
+  </div>`;
+  $('#cal-prev').onclick = () => { ui.calMonth = m===0 ? {y:y-1,m:11} : {y,m:m-1}; render(); };
+  $('#cal-next').onclick = () => { ui.calMonth = m===11 ? {y:y+1,m:0} : {y,m:m+1}; render(); };
+  $$('[data-cal]', c).forEach(b => b.onclick = () => openCalSheet(b.dataset.cal));
+}
+
+/* ---------- СТАТИСТИКА / ДАШБОРД ---------- */
+function statsSorted(){ return [...state.stats].sort((a,b)=>a.date<b.date?-1:1); }
+function lastEntry(platform, metric){
+  const list = statsSorted().filter(s=>s.platform===platform);
+  if (!list.length) return null;
+  const last = list[list.length-1];
+  const prev = list.length>1 ? list[list.length-2] : null;
+  return { value:last[metric], delta: prev ? last[metric]-prev[metric] : 0, date:last.date };
+}
+function deltaHtml(d){
+  if (d===0) return `<div class="tl-delta flat">— без змін</div>`;
+  const up = d>0;
+  return `<div class="tl-delta ${up?'up':'down'}">${up?'▲':'▼'} ${up?'+':''}${d.toLocaleString('uk-UA')} за останній запис</div>`;
+}
+
+function renderStats(c){
+  const tt = lastEntry('tiktok','followers');
+  const ig = lastEntry('insta','followers');
+  const ttv = lastEntry('tiktok','views');
+  const igv = lastEntry('insta','views');
+  const metrics = [['followers','Підписники'],['views','Перегляди'],['likes','Лайки'],['comments','Коментарі']];
+  const ranges = [[7,'7 днів'],[30,'30 днів'],[0,'Увесь час']];
+  c.innerHTML = `<div class="content">
+    <div class="tiles">
+      <div class="tile">
+        <div class="tl-label"><span class="tl-dot" style="background:var(--series-tiktok)"></span>TIKTOK · ПІДПИСНИКИ</div>
+        <div class="tl-value">${tt?fmtNum(tt.value):'—'}</div>${tt?deltaHtml(tt.delta):''}
+      </div>
+      <div class="tile">
+        <div class="tl-label"><span class="tl-dot" style="background:var(--series-insta)"></span>INSTAGRAM · ПІДПИСНИКИ</div>
+        <div class="tl-value">${ig?fmtNum(ig.value):'—'}</div>${ig?deltaHtml(ig.delta):''}
+      </div>
+      <div class="tile">
+        <div class="tl-label"><span class="tl-dot" style="background:var(--series-tiktok)"></span>TIKTOK · ПЕРЕГЛЯДИ</div>
+        <div class="tl-value">${ttv?fmtNum(ttv.value):'—'}</div>${ttv?deltaHtml(ttv.delta):''}
+      </div>
+      <div class="tile">
+        <div class="tl-label"><span class="tl-dot" style="background:var(--series-insta)"></span>INSTAGRAM · ПЕРЕГЛЯДИ</div>
+        <div class="tl-value">${igv?fmtNum(igv.value):'—'}</div>${igv?deltaHtml(igv.delta):''}
+      </div>
+    </div>
+    <div class="section-title">Динаміка</div>
+    <div class="chips">${metrics.map(([k,n])=>`<button class="chip ${ui.chartMetric===k?'active':''}" data-metric="${k}">${n}</button>`).join('')}</div>
+    <div class="chips" style="padding-top:0">${ranges.map(([k,n])=>`<button class="chip ${ui.chartRange===k?'active':''}" data-range="${k}">${n}</button>`).join('')}</div>
+    <div class="chart-card">
+      <h3>${metrics.find(([k])=>k===ui.chartMetric)[1]}</h3>
+      <div class="ch-sub">${ui.chartRange? `Останні ${ui.chartRange} днів` : 'За весь час'} · TikTok проти Instagram</div>
+      <div class="chart-box" id="main-chart"></div>
+      <div class="chart-legend">
+        <span><i style="background:var(--series-tiktok)"></i>TikTok</span>
+        <span><i style="background:var(--series-insta)"></i>Instagram</span>
+      </div>
+    </div>
+    <div class="section-title" style="display:flex;align-items:center">
+      Записи
+      <button class="chip ${ui.statsTable?'active':''}" id="toggle-table" style="margin-left:auto">${ui.statsTable?'Сховати':'Показати'} таблицю</button>
+    </div>
+    ${ui.statsTable ? `<div class="card" style="padding:6px 14px">${statsTableHtml()}</div>` : ''}
+    ${state.stats.length===0?`<div class="empty"><span class="emoji">📊</span>Ще немає даних.<br>Натисни «+» і додай перший запис статистики.</div>`:''}
+  </div>`;
+  $$('[data-metric]', c).forEach(b => b.onclick = () => { ui.chartMetric=b.dataset.metric; render(); });
+  $$('[data-range]', c).forEach(b => b.onclick = () => { ui.chartRange=+b.dataset.range; render(); });
+  $('#toggle-table').onclick = () => { ui.statsTable=!ui.statsTable; render(); };
+  $$('[data-del-stat]', c).forEach(b => b.onclick = () => {
+    state.stats = state.stats.filter(s=>s.id!==b.dataset.delStat); save(); render();
+  });
+  $$('[data-edit-stat]', c).forEach(b => b.onclick = () => openStatSheet(b.dataset.editStat));
+  drawChart();
+}
+
+function statsTableHtml(){
+  const list = [...statsSorted()].reverse().slice(0,30);
+  if (!list.length) return `<div class="empty" style="padding:18px">Порожньо</div>`;
+  return list.map(s=>`
+    <div class="stat-row">
+      <span class="sr-date">${fmtShort(s.date)}</span>
+      <span class="badge ${s.platform==='tiktok'?'tiktok':'insta'}">${s.platform==='tiktok'?'TikTok':'Insta'}</span>
+      <span class="sr-vals" data-edit-stat="${s.id}" style="cursor:pointer">👥 ${s.followers.toLocaleString('uk-UA')} · ▶ ${s.views.toLocaleString('uk-UA')} · ♥ ${s.likes.toLocaleString('uk-UA')}</span>
+      <button class="del-btn" data-del-stat="${s.id}">✕</button>
+    </div>`).join('');
+}
+
+/* власний SVG-графік — без зовнішніх бібліотек */
+function niceTicks(min, max, count=4){
+  if (min===max){ min = min*0.95; max = max*1.05 || 1; }
+  const span = max-min;
+  const step0 = span/count;
+  const mag = Math.pow(10, Math.floor(Math.log10(step0)));
+  const step = [1,2,2.5,5,10].map(m=>m*mag).find(s=>span/s<=count+0.5) || 10*mag;
+  const lo = Math.floor(min/step)*step;
+  const hi = Math.ceil(max/step)*step;
+  const ticks = [];
+  for (let v=lo; v<=hi+step/2; v+=step) ticks.push(Math.round(v*100)/100);
+  return ticks;
+}
+
+function drawChart(){
+  const box = $('#main-chart'); if (!box) return;
+  const cutoff = ui.chartRange ? addDays(todayIso(), -ui.chartRange) : '0000-00-00';
+  const rows = statsSorted().filter(s=>s.date>=cutoff);
+  const dates = [...new Set(rows.map(r=>r.date))].sort();
+  if (dates.length < 2){
+    box.innerHTML = `<div class="empty" style="padding:60px 20px">Замало даних для графіка —<br>додай хоча б два записи</div>`;
+    return;
+  }
+  const val = (d,p) => { const r = rows.find(x=>x.date===d&&x.platform===p); return r ? r[ui.chartMetric] : null; };
+  const SERIES = [
+    { key:'tiktok', name:'TikTok', color:'var(--series-tiktok)' },
+    { key:'insta',  name:'Instagram', color:'var(--series-insta)' },
+  ].map(s => ({...s, data:dates.map(d=>val(d,s.key))}));
+  const all = SERIES.flatMap(s=>s.data).filter(v=>v!==null);
+  if (!all.length){ box.innerHTML = `<div class="empty" style="padding:60px 20px">Немає даних за цей період</div>`; return; }
+  const ticks = niceTicks(Math.min(...all), Math.max(...all));
+  const yMin = ticks[0], yMax = ticks[ticks.length-1];
+
+  const W = box.clientWidth || 300, H = box.clientHeight || 190;
+  const padL = 44, padR = 10, padT = 10, padB = 24;
+  const iw = W-padL-padR, ih = H-padT-padB;
+  const X = i => padL + (dates.length===1 ? iw/2 : i/(dates.length-1)*iw);
+  const Y = v => padT + (1-(v-yMin)/(yMax-yMin||1))*ih;
+
+  let svg = `<svg width="${W}" height="${H}" style="display:block">`;
+  // сітка + підписи осі Y
+  ticks.forEach(t=>{
+    const y = Y(t);
+    svg += `<line x1="${padL}" x2="${W-padR}" y1="${y}" y2="${y}" stroke="var(--grid)" stroke-width="1"/>`;
+    svg += `<text x="${padL-7}" y="${y+3.5}" text-anchor="end" font-size="10" fill="var(--text-muted)">${fmtNum(t)}</text>`;
+  });
+  // підписи осі X (до 6)
+  const xStep = Math.max(1, Math.ceil(dates.length/6));
+  dates.forEach((d,i)=>{
+    if (i%xStep===0 || i===dates.length-1)
+      svg += `<text x="${X(i)}" y="${H-7}" text-anchor="middle" font-size="10" fill="var(--text-muted)">${fmtShort(d)}</text>`;
+  });
+  // лінії та точки
+  SERIES.forEach(s=>{
+    const pts = s.data.map((v,i)=>v===null?null:[X(i),Y(v)]).filter(Boolean);
+    if (pts.length>1)
+      svg += `<polyline points="${pts.map(p=>p.join(',')).join(' ')}" fill="none" stroke="${s.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+    pts.forEach(p=>{
+      svg += `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${s.color}" stroke="var(--surface-1)" stroke-width="2"/>`;
+    });
+  });
+  svg += `<line id="ch-cross" x1="0" x2="0" y1="${padT}" y2="${padT+ih}" stroke="var(--baseline)" stroke-width="1" stroke-dasharray="3 3" visibility="hidden"/>`;
+  svg += `</svg>`;
+  box.innerHTML = svg + `<div id="ch-tip" style="position:absolute;top:6px;left:0;visibility:hidden;background:#f6f4ee;color:#171204;border-radius:10px;padding:8px 10px;font-size:11px;line-height:1.5;pointer-events:none;white-space:nowrap;box-shadow:0 8px 24px rgba(0,0,0,.55);z-index:5"></div>`;
+
+  // ховер: хрестик + тултіп
+  const cross = $('#ch-cross', box), tip = $('#ch-tip', box);
+  const svgEl = $('svg', box);
+  const show = (clientX) => {
+    const rect = svgEl.getBoundingClientRect();
+    const x = clientX - rect.left;
+    let best=0, bd=1e9;
+    dates.forEach((d,i)=>{ const dd=Math.abs(X(i)-x); if (dd<bd){bd=dd;best=i;} });
+    const xi = X(best);
+    cross.setAttribute('x1', xi); cross.setAttribute('x2', xi);
+    cross.setAttribute('visibility','visible');
+    const lines = SERIES.map(s=>{
+      const v = s.data[best];
+      return `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${s.color};margin-right:5px"></span>${s.name}: <b>${v===null?'—':v.toLocaleString('uk-UA')}</b>`;
+    }).join('<br>');
+    tip.innerHTML = `<b>${fmtShort(dates[best])}</b><br>${lines}`;
+    tip.style.visibility='visible';
+    const tw = tip.offsetWidth;
+    tip.style.left = Math.max(0, Math.min(W-tw, xi - tw/2)) + 'px';
+  };
+  const hide = () => { cross.setAttribute('visibility','hidden'); tip.style.visibility='hidden'; };
+  box.onpointermove = e => show(e.clientX);
+  box.onpointerleave = hide;
+}
+/* ================= НИЖНІ ШТОРКИ ================= */
+function openSheet(html){
+  $('#sheet-inner').innerHTML = html;
+  $('#backdrop').classList.add('open');
+  $('#sheet').classList.add('open');
+}
+function closeSheet(){
+  $('#backdrop')?.classList.remove('open');
+  $('#sheet')?.classList.remove('open');
+  if (pendingRender){ pendingRender = false; setTimeout(render, 260); }
+}
+function segInit(id, initial, onChange){
+  const seg = $(id); let val = initial;
+  $$('button', seg).forEach(b => {
+    b.classList.toggle('active', b.dataset.v===val);
+    b.onclick = () => { val=b.dataset.v; $$('button',seg).forEach(x=>x.classList.toggle('active',x===b)); onChange&&onChange(val); };
+  });
+  return () => val;
+}
+
+/* ---------- шторка завдання ---------- */
+function openTaskSheet(id){
+  const t = id ? state.tasks.find(x=>x.id===id) : null;
+  openSheet(`
+    <h3>${t?'Редагувати завдання':'Нове завдання'}</h3>
+    <div class="sheet-body">
+      <label class="f-label">Назва</label>
+      <input class="f-input" id="tf-title" value="${t?esc(t.title):''}" placeholder="Що треба зробити?">
+      <label class="f-label">Опис (необов'язково)</label>
+      <textarea class="f-textarea" id="tf-desc" placeholder="Деталі, посилання, таймінги…">${t?esc(t.desc):''}</textarea>
+      <div class="f-row">
+        <div>
+          <label class="f-label">Виконавець</label>
+          <select class="f-select" id="tf-assignee">
+            ${teamMembers().map(u=>`<option value="${u.id}" ${t&&t.assignee===u.id?'selected':(!t&&u.id===state.user?'selected':'')}>${esc(fullName(u))}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label class="f-label">День</label>
+          <input class="f-input" type="date" id="tf-date" value="${t?t.date:ui.boardDate}">
+        </div>
+      </div>
+      <label class="f-label">Етап</label>
+      <div class="seg" id="tf-status">
+        ${COLS.map(cst=>`<button data-v="${cst.key}">${cst.key==='review'?'Перевірка':cst.name}</button>`).join('')}
+      </div>
+    </div>
+    <button class="btn primary" id="tf-save">${t?'Зберегти':'Додати завдання'}</button>
+    ${t?`<button class="btn danger" id="tf-del">Видалити завдання</button>`:''}
+  `);
+  const getStatus = segInit('#tf-status', t?t.status:'plan');
+  $('#tf-save').onclick = () => {
+    const title = $('#tf-title').value.trim();
+    if (!title){ $('#tf-title').focus(); return; }
+    const data = { title, desc:$('#tf-desc').value.trim(), assignee:$('#tf-assignee').value,
+      date:$('#tf-date').value||todayIso(), status:getStatus() };
+    if (t) Object.assign(t, data);
+    else state.tasks.push({ id:uid(), ...data });
+    ui.boardDate = data.date;
+    save(); closeSheet(); render();
+  };
+  if (t) $('#tf-del').onclick = () => { state.tasks = state.tasks.filter(x=>x.id!==t.id); save(); closeSheet(); render(); };
+}
+
+/* ---------- шторка сценарію ---------- */
+function openScenSheet(id){
+  const s = id ? state.scenarios.find(x=>x.id===id) : null;
+  openSheet(`
+    <h3>${s?'Редагувати сценарій':'Новий сценарій'}</h3>
+    <div class="sheet-body">
+      <label class="f-label">Назва відео</label>
+      <input class="f-input" id="sf-title" value="${s?esc(s.title):''}" placeholder="Про що відео?">
+      <label class="f-label">Платформа</label>
+      <div class="seg" id="sf-platform">
+        <button data-v="tiktok">TikTok</button>
+        <button data-v="insta">Instagram</button>
+        <button data-v="both">Обидві</button>
+      </div>
+      <label class="f-label">Хук (перші секунди)</label>
+      <input class="f-input" id="sf-hook" value="${s?esc(s.hook):''}" placeholder="Фраза, що зачепить глядача">
+      <label class="f-label">Текст сценарію</label>
+      <textarea class="f-textarea" id="sf-text" style="min-height:120px" placeholder="Кадри, репліки, таймінги…">${s?esc(s.text):''}</textarea>
+      <label class="f-label">Статус</label>
+      <div class="seg" id="sf-status">
+        ${SCEN_STATUSES.map(st=>`<button data-v="${st.key}">${st.name}</button>`).join('')}
+      </div>
+    </div>
+    <button class="btn primary" id="sf-save">${s?'Зберегти':'Додати сценарій'}</button>
+    ${s?`<button class="btn danger" id="sf-del">Видалити сценарій</button>`:''}
+  `);
+  const getPlatform = segInit('#sf-platform', s?s.platform:'both');
+  const getStatus = segInit('#sf-status', s?s.status:'idea');
+  $('#sf-save').onclick = () => {
+    const title = $('#sf-title').value.trim();
+    if (!title){ $('#sf-title').focus(); return; }
+    const data = { title, platform:getPlatform(), hook:$('#sf-hook').value.trim(), text:$('#sf-text').value, status:getStatus() };
+    if (s) Object.assign(s, data);
+    else state.scenarios.push({ id:uid(), ...data });
+    save(); closeSheet(); render();
+  };
+  if (s) $('#sf-del').onclick = () => { state.scenarios = state.scenarios.filter(x=>x.id!==s.id); save(); closeSheet(); render(); };
+}
+
+/* ---------- шторка дня календаря ---------- */
+function openCalSheet(dIso){
+  const e = state.calendar[dIso] || { ttPlanned:false, ttPosted:false, igPlanned:false, igPosted:false, note:'' };
+  const d = fromIso(dIso);
+  const toggle = (id, label, checked) => `
+    <div class="toggle-row">
+      <span class="tg-label">${label}</span>
+      <label class="switch"><input type="checkbox" id="${id}" ${checked?'checked':''}><span class="knob"></span></label>
+    </div>`;
+  openSheet(`
+    <h3>${d.getDate()} ${MONTHS[d.getMonth()]} · публікації</h3>
+    <div class="sheet-body">
+      <div class="card" style="margin-bottom:0;padding:2px 14px">
+        ${toggle('cf-ttp','♪ TikTok — заплановано', e.ttPlanned)}
+        ${toggle('cf-ttd','♪ TikTok — <b>виставлено</b>', e.ttPosted)}
+        ${toggle('cf-igp','◎ Instagram — заплановано', e.igPlanned)}
+        ${toggle('cf-igd','◎ Instagram — <b>виставлено</b>', e.igPosted)}
+      </div>
+      <label class="f-label">Нотатка</label>
+      <input class="f-input" id="cf-note" value="${esc(e.note)}" placeholder="Напр.: переносимо на завтра">
+    </div>
+    <button class="btn primary" id="cf-save">Зберегти</button>
+  `);
+  // «виставлено» автоматично вмикає «заплановано»
+  $('#cf-ttd').onchange = ev => { if (ev.target.checked) $('#cf-ttp').checked=true; };
+  $('#cf-igd').onchange = ev => { if (ev.target.checked) $('#cf-igp').checked=true; };
+  $('#cf-save').onclick = () => {
+    const val = { ttPlanned:$('#cf-ttp').checked, ttPosted:$('#cf-ttd').checked,
+      igPlanned:$('#cf-igp').checked, igPosted:$('#cf-igd').checked, note:$('#cf-note').value.trim() };
+    if (!val.ttPlanned&&!val.ttPosted&&!val.igPlanned&&!val.igPosted&&!val.note) delete state.calendar[dIso];
+    else state.calendar[dIso]=val;
+    save(); closeSheet(); render();
+  };
+}
+
+/* ---------- шторка запису статистики ---------- */
+function openStatSheet(id){
+  const s = id ? state.stats.find(x=>x.id===id) : null;
+  openSheet(`
+    <h3>${s?'Редагувати запис':'Додати статистику'}</h3>
+    <div class="sheet-body">
+      <div class="f-row">
+        <div>
+          <label class="f-label">Дата</label>
+          <input class="f-input" type="date" id="mf-date" value="${s?s.date:todayIso()}">
+        </div>
+        <div>
+          <label class="f-label">Платформа</label>
+          <div class="seg" id="mf-platform" style="margin-top:0">
+            <button data-v="tiktok">TikTok</button>
+            <button data-v="insta">Instagram</button>
+          </div>
+        </div>
+      </div>
+      <div class="f-row">
+        <div><label class="f-label">👥 Підписники</label><input class="f-input" type="number" id="mf-followers" value="${s?s.followers:''}" placeholder="0" inputmode="numeric"></div>
+        <div><label class="f-label">▶ Перегляди</label><input class="f-input" type="number" id="mf-views" value="${s?s.views:''}" placeholder="0" inputmode="numeric"></div>
+      </div>
+      <div class="f-row">
+        <div><label class="f-label">♥ Лайки</label><input class="f-input" type="number" id="mf-likes" value="${s?s.likes:''}" placeholder="0" inputmode="numeric"></div>
+        <div><label class="f-label">💬 Коментарі</label><input class="f-input" type="number" id="mf-comments" value="${s?s.comments:''}" placeholder="0" inputmode="numeric"></div>
+      </div>
+    </div>
+    <button class="btn primary" id="mf-save">${s?'Зберегти':'Додати запис'}</button>
+    ${s?`<button class="btn danger" id="mf-del">Видалити запис</button>`:''}
+  `);
+  const getPlatform = segInit('#mf-platform', s?s.platform:'tiktok');
+  $('#mf-save').onclick = () => {
+    const num = sel => Math.max(0, parseInt($(sel).value,10)||0);
+    const data = { date:$('#mf-date').value||todayIso(), platform:getPlatform(),
+      followers:num('#mf-followers'), views:num('#mf-views'), likes:num('#mf-likes'), comments:num('#mf-comments') };
+    if (s) Object.assign(s, data);
+    else {
+      // один запис на день+платформу: оновлюємо, якщо вже є
+      const existing = state.stats.find(x=>x.date===data.date && x.platform===data.platform);
+      if (existing) Object.assign(existing, data);
+      else state.stats.push({ id:uid(), ...data });
+    }
+    save(); closeSheet(); render();
+  };
+  if (s) $('#mf-del').onclick = () => { state.stats = state.stats.filter(x=>x.id!==s.id); save(); closeSheet(); render(); };
+}
+
+/* ---------- шторка користувача ---------- */
+function openUserSheet(){
+  const u = teamById(state.user);
+  openSheet(`
+    <h3>Акаунт</h3>
+    <div class="sheet-body">
+      <div class="card" style="display:flex;align-items:center;gap:12px;margin-bottom:0">
+        <span class="avatar" style="width:48px;height:48px;font-size:17px;${avBg(u)}">${u.photo?'':initials(fullName(u))}</span>
+        <span>
+          <div style="font-size:16px;font-weight:800">${esc(fullName(u))}</div>
+          <div style="font-size:12.5px;color:var(--text-muted)">${esc(u.handle||'')} · вхід через Telegram</div>
+        </span>
+      </div>
+      <div style="font-size:12px;color:var(--text-secondary);line-height:1.5;margin-top:12px">
+        ${CLOUD
+          ? 'Дані синхронізуються через Firebase — вся команда бачить спільну дошку, сценарії, креативи і статистику.'
+          : 'У демо-версії дані зберігаються лише на цьому пристрої. Після налаштування за README-SETUP.md все синхронізуватиметься між командою.'}
+      </div>
+    </div>
+    <button class="btn primary" id="uf-logout" style="background:var(--surface-2);color:var(--text-primary)">Вийти з акаунта</button>
+  `);
+  $('#uf-logout').onclick = () => { state.user=null; save(); closeSheet(); render(); };
+}
+
+/* ================= СТАРТ ================= */
+function tickTime(){
+  const d = new Date();
+  $('#sb-time').textContent = `${d.getHours()}:${pad(d.getMinutes())}`;
+}
+tickTime(); setInterval(tickTime, 30000);
+load();
+render();
+</script>
+</body>
+</html>
