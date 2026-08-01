@@ -547,17 +547,17 @@ function alertBanner(msg){
   setTimeout(()=>el.remove(), 8000);
 }
 
-function save(){
+function save(...sections){
   if (CLOUD){
     storage.set('smm_user', state.user || '');
     if (!db) return;
-    SECTIONS.forEach(sec=>{
+    // пишемо ТІЛЬКИ явно змінені секції — інакше пристрій зі старим станом
+    // може перетерти чужі дані (класична гонка синхронізації)
+    sections.filter(sec=>SECTIONS.includes(sec)).forEach(sec=>{
       const cur = JSON.stringify(state[sec] ?? null);
-      if (cur !== lastSynced[sec]){
-        lastSynced[sec] = cur;
-        db.collection('app').doc(sec).set({ data: JSON.parse(cur), updatedAt: Date.now() })
-          .catch(e=>console.error('[save]', sec, e));
-      }
+      lastSynced[sec] = cur;
+      db.collection('app').doc(sec).set({ data: JSON.parse(cur), updatedAt: Date.now() })
+        .catch(e=>console.error('[save]', sec, e));
     });
   } else {
     storage.set('smm_demo_v1', JSON.stringify(state));
@@ -718,7 +718,7 @@ window.onTelegramAuth = function(user){
     tgId: user.id,
   };
   state.user = id;
-  save(); ui.tab='board'; render();
+  save('team'); ui.tab='board'; render();
 };
 
 /* ---------- каркас з таб-баром ---------- */
@@ -830,7 +830,7 @@ function renderAI(c){
     const fb = aiFb(b.dataset.like);
     if (fb.likes[state.user]) delete fb.likes[state.user];
     else fb.likes[state.user] = true;
-    save(); render();
+    save('ai'); render();
   });
   $$('[data-note-send]', c).forEach(b=>b.onclick = ()=>{
     const inp = $(`[data-note-input="${b.dataset.noteSend}"]`, c);
@@ -838,7 +838,7 @@ function renderAI(c){
     if (!text) return;
     const me = teamById(state.user);
     aiFb(b.dataset.noteSend).notes.push({ by:state.user, name:me.first, text, at:Date.now() });
-    save(); render();
+    save('ai'); render();
   });
   $$('[data-note-input]', c).forEach(inp=>inp.onkeydown = e=>{
     if (e.key==='Enter') $(`[data-note-send="${inp.dataset.noteInput}"]`, c).click();
@@ -852,7 +852,7 @@ function renderAI(c){
       aiFb(id).notes.push({ by:state.user, name:me.first, text, at:Date.now() });
     }
     aiFb(id).fix = { requested:true, by:state.user, at:Date.now() };
-    save(); render();
+    save('ai'); render();
   });
 }
 
@@ -893,7 +893,7 @@ function renderBoard(c){
     e.stopPropagation();
     const t = state.tasks.find(x=>x.id===b.dataset.id);
     const idx = COLS.findIndex(x=>x.key===t.status) + (+b.dataset.move);
-    if (idx>=0 && idx<COLS.length){ t.status = COLS[idx].key; save(); render(); }
+    if (idx>=0 && idx<COLS.length){ t.status = COLS[idx].key; save('tasks'); render(); }
   });
   $$('[data-edit-task]', c).forEach(el => el.onclick = () => {
     if (dnd.justDropped){ dnd.justDropped=false; return; }
@@ -978,7 +978,7 @@ function enableDrag(c){
       setTimeout(()=>{ dnd.justDropped=false; }, 350);
       cleanup();
       if (idx>=0 && task && task.status!==COLS[idx].key){
-        task.status = COLS[idx].key; save(); render();
+        task.status = COLS[idx].key; save('tasks'); render();
       }
     } else cleanup();
   };
@@ -1173,7 +1173,7 @@ function renderStats(c){
   $$('[data-range]', c).forEach(b => b.onclick = () => { ui.chartRange=+b.dataset.range; render(); });
   $('#toggle-table').onclick = () => { ui.statsTable=!ui.statsTable; render(); };
   $$('[data-del-stat]', c).forEach(b => b.onclick = () => {
-    state.stats = state.stats.filter(s=>s.id!==b.dataset.delStat); save(); render();
+    state.stats = state.stats.filter(s=>s.id!==b.dataset.delStat); save('stats'); render();
   });
   $$('[data-edit-stat]', c).forEach(b => b.onclick = () => openStatSheet(b.dataset.editStat));
   drawChart();
@@ -1339,9 +1339,9 @@ function openTaskSheet(id){
     if (t) Object.assign(t, data);
     else state.tasks.push({ id:uid(), ...data });
     ui.boardDate = data.date;
-    save(); closeSheet(); render();
+    save('tasks'); closeSheet(); render();
   };
-  if (t) $('#tf-del').onclick = () => { state.tasks = state.tasks.filter(x=>x.id!==t.id); save(); closeSheet(); render(); };
+  if (t) $('#tf-del').onclick = () => { state.tasks = state.tasks.filter(x=>x.id!==t.id); save('tasks'); closeSheet(); render(); };
 }
 
 /* ---------- шторка сценарію ---------- */
@@ -1378,9 +1378,9 @@ function openScenSheet(id){
     const data = { title, platform:getPlatform(), hook:$('#sf-hook').value.trim(), text:$('#sf-text').value, status:getStatus() };
     if (s) Object.assign(s, data);
     else state.scenarios.push({ id:uid(), ...data });
-    save(); closeSheet(); render();
+    save('scenarios'); closeSheet(); render();
   };
-  if (s) $('#sf-del').onclick = () => { state.scenarios = state.scenarios.filter(x=>x.id!==s.id); save(); closeSheet(); render(); };
+  if (s) $('#sf-del').onclick = () => { state.scenarios = state.scenarios.filter(x=>x.id!==s.id); save('scenarios'); closeSheet(); render(); };
 }
 
 /* ---------- шторка дня календаря ---------- */
@@ -1414,7 +1414,7 @@ function openCalSheet(dIso){
       igPlanned:$('#cf-igp').checked, igPosted:$('#cf-igd').checked, note:$('#cf-note').value.trim() };
     if (!val.ttPlanned&&!val.ttPosted&&!val.igPlanned&&!val.igPosted&&!val.note) delete state.calendar[dIso];
     else state.calendar[dIso]=val;
-    save(); closeSheet(); render();
+    save('calendar'); closeSheet(); render();
   };
 }
 
@@ -1461,9 +1461,9 @@ function openStatSheet(id){
       if (existing) Object.assign(existing, data);
       else state.stats.push({ id:uid(), ...data });
     }
-    save(); closeSheet(); render();
+    save('stats'); closeSheet(); render();
   };
-  if (s) $('#mf-del').onclick = () => { state.stats = state.stats.filter(x=>x.id!==s.id); save(); closeSheet(); render(); };
+  if (s) $('#mf-del').onclick = () => { state.stats = state.stats.filter(x=>x.id!==s.id); save('stats'); closeSheet(); render(); };
 }
 
 /* ---------- шторка користувача ---------- */
@@ -1515,7 +1515,7 @@ if (TG_APP){
       photo: u.photo_url || '', tgId: u.id,
     };
     state.user = id;
-    save();
+    save('team');
   }
 }
 render();
