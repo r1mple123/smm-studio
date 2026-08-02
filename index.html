@@ -422,7 +422,7 @@ const FIREBASE_CONFIG = {
   appId: "1:240675872847:web:2f33a2a259125235a70a3a"
 };
 const TG_BOT_USERNAME = "smm_electri4ka_bot";  // юзернейм вашого бота БЕЗ @
-const ALLOWED_TG_IDS = [];             // Telegram ID команди, напр. [123456789, 987654321, 555555555]
+const ALLOWED_TG_IDS = [678442822, 819680126, 737014501];             // Telegram ID команди, напр. [123456789, 987654321, 555555555]
                                        // порожній список [] = пускати будь-кого з Telegram
 const ADMIN_TG_IDS = [678442822];               // Telegram ID адмінів (кнопка «Виправити зараз»), напр. [123456789]
                                        // порожній список [] = кнопку бачать усі
@@ -463,11 +463,11 @@ const DEMO_TEAM = [
 function teamMembers(){
   if (state && state.team && Object.keys(state.team).length)
     return Object.entries(state.team).map(([id,m])=>({id, ...m}));
-  return DEMO_TEAM;
+  return CLOUD ? [] : DEMO_TEAM;
 }
 const teamSize = () => Math.max(teamMembers().length, CLOUD ? 1 : 3);
 const fullName = u => `${u.first||''} ${u.last||''}`.trim() || 'Без імені';
-const teamById = id => teamMembers().find(u=>u.id===id) || teamMembers()[0] || {first:'?',last:'',photo:''};
+const teamById = id => teamMembers().find(u=>u.id===id) || (CLOUD ? {id, first:'?', last:'', photo:''} : (teamMembers()[0] || {first:'?',last:'',photo:''}));
 function isAdmin(){
   if (!state || !state.user) return false;
   if (!CLOUD) return state.user === 'u1'; // у демо адмін — перший профіль
@@ -546,6 +546,20 @@ function alertBanner(msg){
   el.textContent = msg;
   $('.app').appendChild(el);
   setTimeout(()=>el.remove(), 8000);
+}
+
+function saveTeamMember(id, member){
+  state.team = state.team || {};
+  state.team[id] = member;
+  storage.set('smm_user', state.user || '');
+  if (CLOUD){
+    if (!db) return;
+    // merge:true — додає/оновлює ТІЛЬКИ цього учасника, не стираючи інших
+    db.collection('app').doc('team').set({ data: { [id]: member }, updatedAt: Date.now() }, { merge: true })
+      .catch(e=>console.error('[team]', e));
+  } else {
+    storage.set('smm_demo_v1', JSON.stringify(state));
+  }
 }
 
 function save(...sections){
@@ -719,16 +733,15 @@ window.onTelegramAuth = function(user){
     return;
   }
   const id = 'tg' + user.id;
-  state.team = state.team || {};
-  state.team[id] = {
+  state.user = id;
+  saveTeamMember(id, {
     first: user.first_name || '',
     last: user.last_name || '',
     handle: user.username ? '@'+user.username : '',
     photo: user.photo_url || '',
     tgId: user.id,
-  };
-  state.user = id;
-  save('team'); ui.tab='board'; render();
+  });
+  ui.tab='board'; render();
 };
 
 /* ---------- каркас з таб-баром ---------- */
@@ -1563,14 +1576,12 @@ if (TG_APP){
   const u = TG_APP.initDataUnsafe.user;
   if (CLOUD && (!ALLOWED_TG_IDS.length || ALLOWED_TG_IDS.includes(u.id))){
     const id = 'tg' + u.id;
-    state.team = state.team || {};
-    state.team[id] = {
+    state.user = id;
+    saveTeamMember(id, {
       first: u.first_name || '', last: u.last_name || '',
       handle: u.username ? '@'+u.username : '',
       photo: u.photo_url || '', tgId: u.id,
-    };
-    state.user = id;
-    save('team');
+    });
   }
 }
 render();
