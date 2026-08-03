@@ -1,5 +1,5 @@
 {
-  "exportedAt": "2026-08-02T18:04:35.859Z",
+  "exportedAt": "2026-08-03T11:54:01.653Z",
   "state": {
     "ai": {
       "2026-08-02-1": {
@@ -1694,12 +1694,26 @@
       }
     ],
     "team": {
+      "tg819680126": {
+        "last": "Galay",
+        "tgId": 819680126,
+        "photo": "",
+        "handle": "@olehhalai",
+        "first": "Oleh"
+      },
+      "tg737014501": {
+        "last": "",
+        "tgId": 737014501,
+        "photo": "",
+        "handle": "@MVTST",
+        "first": "Марк"
+      },
       "tg678442822": {
         "first": "Roman",
         "last": "Shchetinin",
         "handle": "@rs_5830",
-        "photo": "https://t.me/i/userpic/320/nMKSS4olxVxoiA1GGakA2d1B5nYI4EtXQt_0x0tQm2c.svg",
-        "tgId": 678442822
+        "tgId": 678442822,
+        "photo": "https://t.me/i/userpic/320/nMKSS4olxVxoiA1GGakA2d1B5nYI4EtXQt_0x0tQm2c.svg"
       }
     }
   }
